@@ -49,21 +49,25 @@ const (
 	// BfeHandlerFinish to close the connection after response
 	BfeHandlerFinish = iota
 	// BfeHandlerGoOn to go on next handler
+	// BfeHandlerGoOn继续下一个处理器。放行
 	BfeHandlerGoOn
 	// BfeHandlerRedirect to redirect
 	BfeHandlerRedirect
 	// BfeHandlerResponse to send response
 	BfeHandlerResponse
 	// BfeHandlerClose to close the connection directly, with no data sent.
+	// 直接关闭连接，不发送数据。被拦截
 	BfeHandlerClose
 )
 
+// HandlerList 函数链
 type HandlerList struct {
 	handlerType int        /* type of handlers */
 	handlers    *list.List /* list of handlers */
 }
 
 // NewHandlerList creates a HandlerList.
+// 创建指定类型的处理链
 func NewHandlerList(handlerType int) *HandlerList {
 	handlers := new(HandlerList)
 
@@ -74,6 +78,7 @@ func NewHandlerList(handlerType int) *HandlerList {
 }
 
 // FilterAccept filters accept with HandlerList.
+// 过滤出来accept的回调
 func (hl *HandlerList) FilterAccept(session *bfe_basic.Session) int {
 	retVal := BfeHandlerGoOn
 

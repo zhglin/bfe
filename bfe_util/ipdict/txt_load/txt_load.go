@@ -39,6 +39,7 @@ var (
 	ErrWrongMetaInfo = errors.New("Wrong meta info")
 )
 
+// TxtFileLoader txt文件类型的配置文件加载
 type TxtFileLoader struct {
 	fileName string
 	maxLine  int
@@ -92,6 +93,7 @@ func checkSplit(line string, sep string) (net.IP, net.IP, error) {
 }
 
 // checkLine checks line format
+// 检查格式 返回 起始ip 终止ip
 func checkLine(line string) (net.IP, net.IP, error) {
 	var startIP, endIP net.IP
 	var err error
@@ -117,6 +119,7 @@ func checkLine(line string) (net.IP, net.IP, error) {
 
 // checkCIDR check cidr format
 // legal format is [ipv4|ipv6]/xxx
+// 合法格式为[ipv4|ipv6]/xxx
 func checkCIDR(line string) (net.IP, net.IP, error) {
 	_, netIP, err := net.ParseCIDR(line)
 	if err != nil {
@@ -125,12 +128,13 @@ func checkCIDR(line string) (net.IP, net.IP, error) {
 	return netIP.IP, getLastIPAddress(netIP), nil
 }
 
-/* check Version num and load IP txt file to IP items in memory */
+// CheckAndLoad /* check Version num and load IP txt file to IP items in memory */
+// 检查“版本号”，将“IP txt”文件加载到内存中的IP项中
 func (f TxtFileLoader) CheckAndLoad(curVersion string) (*ipdict.IPItems, error) {
 	var startIP, endIP net.IP
 
 	fileName := f.fileName
-	// get file Version and lineNum
+	// get file Version and lineNum 获取文件版本和Ip数量
 	metaInfo, err := getFileInfo(fileName)
 	if err != nil {
 		return nil, fmt.Errorf("loadFile(): %s %s", fileName, err.Error())
@@ -167,7 +171,7 @@ func (f TxtFileLoader) CheckAndLoad(curVersion string) (*ipdict.IPItems, error) 
 	if err != nil {
 		return nil, err
 	}
-	// scan the file line by line
+	// scan the file line by line 文件扫描
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 
@@ -187,7 +191,7 @@ func (f TxtFileLoader) CheckAndLoad(curVersion string) (*ipdict.IPItems, error) 
 		// insert start ip and end ip into dict
 		if bytes.Equal(startIP, endIP) {
 			// startIp == endIP insert single
-			err = ipItems.InsertSingle(startIP)
+			err = ipItems.InsertSingle(startIP) // 添加到hashSet
 			singleIPCounter += 1
 		} else {
 			err = ipItems.InsertPair(startIP, endIP)

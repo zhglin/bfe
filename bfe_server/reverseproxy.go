@@ -71,6 +71,7 @@ type RoundTripperMap map[string]bfe_http.RoundTripper
 
 // ReverseProxy takes an incoming request and sends it to another server,
 // proxying the response back to the client.
+// 接收传入的请求并将其发送到另一个服务器，将响应代理回客户机。
 type ReverseProxy struct {
 	// The transport used to perform proxy requests.
 	// If no transport from clustername->transport map, create one.

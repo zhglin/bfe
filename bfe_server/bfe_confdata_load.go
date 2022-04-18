@@ -37,8 +37,9 @@ import (
 )
 
 // InitDataLoad load data when bfe start.
+// bfe启动时加载数据。
 func (srv *BfeServer) InitDataLoad() error {
-	// load ServerDataConf
+	// load ServerDataConf 配置文件
 	serverConf, err := bfe_route.LoadServerDataConf(srv.Config.Server.HostRuleConf,
 		srv.Config.Server.VipRuleConf, srv.Config.Server.RouteRuleConf,
 		srv.Config.Server.ClusterConf)

@@ -28,8 +28,10 @@ import (
 )
 
 const (
+	// BalancerProxy layer4均衡器工作在PROXY模式下
 	BalancerProxy = "PROXY" // layer4 balancer working in PROXY mode (eg. F5, Ctrix, ELB etc)
-	BalancerNone  = "NONE"  // layer4 balancer not used
+	// BalancerNone layer4均衡器未使用
+	BalancerNone = "NONE" // layer4 balancer not used
 )
 
 const (
@@ -37,40 +39,63 @@ const (
 	LibrarySuffix = ".so"
 )
 
+// ConfigBasic 基本的服务器配置
 type ConfigBasic struct {
-	HttpPort       int  // listen port for http
-	HttpsPort      int  // listen port for https
-	MonitorPort    int  // web server port for monitor
-	MaxCpus        int  // number of max cpus to use
-	AcceptNum      int  // number of accept goroutine for each listener, default 1
+	// HTTP监听端口
+	HttpPort int // listen port for http
+	// HTTPS监听端口
+	HttpsPort int // listen port for https
+	// 监控监控端口
+	MonitorPort int // web server port for monitor
+	// 使用的最大cpu数量
+	MaxCpus int // number of max cpus to use
+	// 每个监听器的accept goroutine数量，默认为1
+	AcceptNum int // number of accept goroutine for each listener, default 1
+	// 监视器的Web服务器是否启用
 	MonitorEnabled bool // web server for monitor enable or not
 
 	// settings of layer-4 load balancer
 	Layer4LoadBalancer string
 
 	// settings of communicate with http client
-	TlsHandshakeTimeout     int  // tls handshake timeout, in seconds
-	ClientReadTimeout       int  // read timeout, in seconds
-	ClientWriteTimeout      int  // read timeout, in seconds
-	GracefulShutdownTimeout int  // graceful shutdown timeout, in seconds
-	MaxHeaderBytes          int  // max header length in bytes in request
-	MaxHeaderUriBytes       int  // max URI(in header) length in bytes in request
-	MaxProxyHeaderBytes     int  // max header length in bytes in Proxy protocol
-	KeepAliveEnabled        bool // if false, client connection is shutdown disregard of http headers
+
+	// TLS握手超时，单位为秒
+	TlsHandshakeTimeout int // tls handshake timeout, in seconds
+	// 读取超时，以秒为单位
+	ClientReadTimeout int // read timeout, in seconds
+	// 写入超时，以秒为单位
+	ClientWriteTimeout int // read timeout, in seconds
+	// 优雅关机超时，以秒为单位
+	GracefulShutdownTimeout int // graceful shutdown timeout, in seconds
+	// 请求中以字节为单位的最大报头长度
+	MaxHeaderBytes int // max header length in bytes in request
+	// 请求中的最大URI(头)长度(以字节为单位)
+	MaxHeaderUriBytes int // max URI(in header) length in bytes in request
+	// 代理协议中的最大报头长度(字节)
+	MaxProxyHeaderBytes int // max header length in bytes in Proxy protocol
+	// 如果为false，则关闭客户端连接，忽略HTTP报头
+	KeepAliveEnabled bool // if false, client connection is shutdown disregard of http headers
 
 	Modules []string // modules to load
+	// 插件
 	Plugins []string // plugins to load
 
 	// location of data files for bfe_route
-	HostRuleConf  string // path of host_rule.data
-	VipRuleConf   string // path of vip_rule.data
+
+	// host_rule.data路径
+	HostRuleConf string // path of host_rule.data
+	// vip_rule.data路径
+	VipRuleConf string // path of vip_rule.data
+	// route_rule.data路径
 	RouteRuleConf string // path of route_rule.data
 
 	// location of other data files
+	// cluster_table.data路径
 	ClusterTableConf string // path of cluster_table.data
 	GslbConf         string // path of gslb.data
-	ClusterConf      string // path of cluster_conf.data
-	NameConf         string // path of name_conf.data
+	// cluster_conf.data路径
+	ClusterConf string // path of cluster_conf.data
+	NameConf    string // path of name_conf.data
 
 	// interval
 	MonitorInterval int // interval for getting diff of proxy-state
@@ -108,6 +133,7 @@ func (cfg *ConfigBasic) SetDefaultConf() {
 	cfg.MonitorInterval = 20
 }
 
+// Check 校验配置
 func (cfg *ConfigBasic) Check(confRoot string) error {
 	return ConfBasicCheck(cfg, confRoot)
 }
@@ -115,7 +141,7 @@ func (cfg *ConfigBasic) Check(confRoot string) error {
 func ConfBasicCheck(cfg *ConfigBasic, confRoot string) error {
 	var err error
 
-	// check basic conf
+	// check basic conf 检查基本配置
 	err = basicConfCheck(cfg)
 	if err != nil {
 		return err
@@ -130,6 +156,7 @@ func ConfBasicCheck(cfg *ConfigBasic, confRoot string) error {
 	return nil
 }
 
+// 配置校验
 func basicConfCheck(cfg *ConfigBasic) error {
 	// check HttpPort
 	if cfg.HttpPort < 1 || cfg.HttpPort > 65535 {
@@ -225,6 +252,7 @@ func basicConfCheck(cfg *ConfigBasic) error {
 	return nil
 }
 
+// 负载均衡
 func checkLayer4LoadBalancer(cfg *ConfigBasic) error {
 	if len(cfg.Layer4LoadBalancer) == 0 {
 		cfg.Layer4LoadBalancer = BalancerNone // default NONE

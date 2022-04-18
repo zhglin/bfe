@@ -33,13 +33,19 @@ const (
 	SessionTrustSource    int32 = 1
 )
 
+// Session 会话
 type Session struct {
-	SessionId string    // session id
+	SessionId string // session id
+	// 接受连接的时间
 	StartTime time.Time // time of accept the connection
-	EndTime   time.Time // time of close connection
-	Overhead  time.Duration
+	// 连接关闭的时间
+	EndTime time.Time // time of close connection
+	// 链接的持续时间
+	Overhead time.Duration
 
+	// tcp链接
 	Connection net.Conn
+	// 客户端地址
 	RemoteAddr *net.TCPAddr // client address
 
 	Use100Continue bool // "expect 100-continue" is used?
@@ -53,10 +59,14 @@ type Session struct {
 	Product string // product name of vip
 	Rtt     uint32 // smoothed RTT for current connection (us)
 
-	lock          sync.RWMutex                // lock for session
-	reqNum        int64                       // number of total request
-	reqNumActive  int64                       // number of active request
-	readTotal     int64                       // total bytes read from client socket
+	lock sync.RWMutex // lock for session
+	// 请求总数
+	reqNum int64 // number of total request
+	// 活动请求数
+	reqNumActive int64 // number of active request
+	// 从客户端套接字读取的总字节数
+	readTotal int64 // total bytes read from client socket
+	// 写入客户端套接字的总字节数
 	writeTotal    int64                       // total bytes write to client socket
 	isTrustSource int32                       // from Trust source or not
 	errCode       error                       // err of the connection
@@ -65,6 +75,7 @@ type Session struct {
 }
 
 // NewSession creates and initializes a new session
+// 创建并初始化一个新会话
 func NewSession(conn net.Conn) *Session {
 	s := new(Session)
 
@@ -84,6 +95,7 @@ func (s *Session) GetVip() net.IP {
 	return s.Vip
 }
 
+// Finish session完成
 func (s *Session) Finish() {
 	s.EndTime = time.Now()
 	s.Overhead = s.EndTime.Sub(s.StartTime)

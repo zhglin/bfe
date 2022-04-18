@@ -29,8 +29,9 @@ import (
 )
 
 // Callback point.
+// 回调的所有类型
 const (
-	HandleAccept = iota
+	HandleAccept = iota // accept接收到新链接
 	HandleHandshake
 	HandleBeforeLocation
 	HandleFoundProduct
@@ -41,6 +42,7 @@ const (
 	HandleFinish
 )
 
+// CallbackPointName 对应的名称
 func CallbackPointName(point int) string {
 	switch point {
 	case HandleAccept:
@@ -66,11 +68,13 @@ func CallbackPointName(point int) string {
 	}
 }
 
+// BfeCallbacks 各种model的回调函数
 type BfeCallbacks struct {
 	callbacks map[int]*HandlerList
 }
 
 // NewBfeCallbacks creates a BfeCallbacks.
+// 注册所有类型的callback
 func NewBfeCallbacks() *BfeCallbacks {
 	// create bfeCallbacks
 	bfeCallbacks := new(BfeCallbacks)
@@ -78,6 +82,7 @@ func NewBfeCallbacks() *BfeCallbacks {
 
 	// create handler list for each callback point
 	// for HandlesAccept
+	// 创建HandlesAccept的每个回调点的处理程序列表
 	bfeCallbacks.callbacks[HandleAccept] = NewHandlerList(HandlersAccept)
 	bfeCallbacks.callbacks[HandleHandshake] = NewHandlerList(HandlersAccept)
 
@@ -100,6 +105,7 @@ func NewBfeCallbacks() *BfeCallbacks {
 }
 
 // AddFilter adds filter to given callback point.
+// 将过滤器添加到给定的回调点。
 func (bcb *BfeCallbacks) AddFilter(point int, f interface{}) error {
 	hl, ok := bcb.callbacks[point]
 
@@ -126,6 +132,7 @@ func (bcb *BfeCallbacks) AddFilter(point int, f interface{}) error {
 }
 
 // GetHandlerList gets handler list for given callback point
+// 获取给定回调点的处理程序列表
 func (bcb *BfeCallbacks) GetHandlerList(point int) *HandlerList {
 	hl, ok := bcb.callbacks[point]
 
@@ -138,6 +145,7 @@ func (bcb *BfeCallbacks) GetHandlerList(point int) *HandlerList {
 }
 
 // ModuleHandlersGetJSON get info of handlers
+// 获取处理程序的信息
 func (bcb *BfeCallbacks) ModuleHandlersGetJSON() ([]byte, error) {
 	cbs := make(map[string][]string)
 

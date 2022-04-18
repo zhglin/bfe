@@ -37,6 +37,8 @@ import (
 // using conn as the underlying transport.
 // The configuration config must be non-nil and must have
 // at least one certificate.
+// 服务器返回一个新的TLS服务器端连接使用conn作为底层传输。
+// 配置配置必须是非空的，必须至少有一个证书。
 func Server(conn net.Conn, config *Config) *Conn {
 	return &Conn{conn: conn, config: config}
 }

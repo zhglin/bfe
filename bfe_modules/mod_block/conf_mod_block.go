@@ -23,18 +23,23 @@ import (
 	"github.com/bfenetworks/bfe/bfe_util"
 )
 
+// ConfModBlock 配置文件内容
 type ConfModBlock struct {
 	Basic struct {
+		// 规则配置路径
 		ProductRulePath string // path of product block rule data
+		// ip配置路径
 		IPBlocklistPath string // path of ip blocklist data
 	}
 
 	Log struct {
+		// 是否打开log
 		OpenDebug bool //  whether open debug
 	}
 }
 
 // ConfLoad loads config from config file
+// 从配置文件加载配置
 func ConfLoad(filePath string, confRoot string) (*ConfModBlock, error) {
 	var cfg ConfModBlock
 	var err error
@@ -46,6 +51,7 @@ func ConfLoad(filePath string, confRoot string) (*ConfModBlock, error) {
 	}
 
 	// check conf of mod_block
+	// 校验配置文件
 	err = cfg.Check(confRoot)
 	if err != nil {
 		return &cfg, err
@@ -58,6 +64,7 @@ func (cfg *ConfModBlock) Check(confRoot string) error {
 	return ConfModBlockCheck(cfg, confRoot)
 }
 
+// ConfModBlockCheck 校验并设置配置路径为全路径
 func ConfModBlockCheck(cfg *ConfModBlock, confRoot string) error {
 	if cfg.Basic.ProductRulePath == "" {
 		log.Logger.Warn("ModBlock.ProductRulePath not set, use default value")

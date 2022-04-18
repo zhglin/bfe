@@ -25,13 +25,15 @@ import (
 	"github.com/bfenetworks/bfe/bfe_modules"
 )
 
+// StartUp 启动server
 func StartUp(cfg bfe_conf.BfeConfig, version string, confRoot string) error {
 	var err error
 
 	// set all available modules
+	// 设置系统可用的所有模块
 	bfe_modules.SetModules()
 
-	// create bfe server
+	// create bfe server 创建server
 	bfeServer := NewBfeServer(cfg, confRoot, version)
 
 	// initial http
@@ -65,13 +67,13 @@ func StartUp(cfg bfe_conf.BfeConfig, version string, confRoot string) error {
 		return err
 	}
 
-	// register modules
+	// register modules 注册配置的模块
 	if err = bfeServer.RegisterModules(cfg.Server.Modules); err != nil {
 		log.Logger.Error("StartUp(): RegisterModules():%s", err.Error())
 		return err
 	}
 
-	// initialize modules
+	// initialize modules 初始化配置的模块
 	if err = bfeServer.InitModules(); err != nil {
 		log.Logger.Error("StartUp(): bfeServer.InitModules():%s",
 			err.Error())
@@ -93,7 +95,7 @@ func StartUp(cfg bfe_conf.BfeConfig, version string, confRoot string) error {
 	}
 	log.Logger.Info("StartUp():bfeServer.InitPlugins() OK")
 
-	// initialize listeners
+	// initialize listeners 初始化监听端口
 	if err = bfeServer.InitListeners(cfg); err != nil {
 		log.Logger.Error("StartUp(): InitListeners():%v", err)
 		return err
@@ -107,6 +109,7 @@ func StartUp(cfg bfe_conf.BfeConfig, version string, confRoot string) error {
 	serveChan := make(chan error)
 
 	// start goroutine to accept http connections
+	// 启动goroutine接受HTTP连接
 	for i := 0; i < cfg.Server.AcceptNum; i++ {
 		go func() {
 			httpErr := bfeServer.ServeHttp(bfeServer.HttpListener)
@@ -115,6 +118,7 @@ func StartUp(cfg bfe_conf.BfeConfig, version string, confRoot string) error {
 	}
 
 	// start goroutine to accept https connections
+	// 启动goroutine接受HTTPS连接
 	for i := 0; i < cfg.Server.AcceptNum; i++ {
 		go func() {
 			httpsErr := bfeServer.ServeHttps(bfeServer.HttpsListener)

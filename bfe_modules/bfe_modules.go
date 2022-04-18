@@ -47,6 +47,8 @@ import (
 )
 
 // list of all modules, the order is very important
+// 列表中所有模块的顺序是非常重要的
+// 创建所有的module实例
 var moduleList = []bfe_module.BfeModule{
 	// mod_trust_clientip
 	mod_trust_clientip.NewModuleTrustClientIP(),
@@ -138,7 +140,8 @@ func InitModuleList(modules []bfe_module.BfeModule) {
 	moduleList = modules
 }
 
-// add all modules
+// SetModules add all modules
+// 添加所有支持的模块
 func SetModules() {
 	for _, module := range moduleList {
 		bfe_module.AddModule(module)

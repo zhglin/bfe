@@ -16,11 +16,14 @@ package byte_pool
 
 import "fmt"
 
+// BytePool 元素长度不固定的内存池
 type BytePool struct {
-	buf         []byte
-	length      []uint32
+	buf    []byte
+	length []uint32 // 元素下标的key长度
+	// 最大的单个元素长度
 	maxElemSize int // max length of element
-	maxElemNum  int // max element num
+	// 能存储的元素数
+	maxElemNum int // max element num
 }
 
 // NewBytePool creates a new BytePool
@@ -31,6 +34,12 @@ type BytePool struct {
 //
 // RETURNS:
 //   - a pointer point to the BytePool
+// NewBytePool创建一个新的BytePool
+// 参数:
+// - elemNum: int，字节池的最大元素数
+// - maxElemSize: int，每个元素的最大长度
+// 返回:
+// -一个指向字节池的指针
 func NewBytePool(elemNum int, maxElemSize int) *BytePool {
 	pool := new(BytePool)
 	pool.buf = make([]byte, elemNum*maxElemSize)
@@ -46,6 +55,7 @@ func NewBytePool(elemNum int, maxElemSize int) *BytePool {
 // PARAMS:
 //   - index: index of the byte Pool
 //   - key: []byte key
+// 在index位置设置key
 func (pool *BytePool) Set(index int32, key []byte) error {
 	if int(index) >= pool.maxElemNum {
 		return fmt.Errorf("index out of range %d %d", index, pool.maxElemNum)
@@ -55,7 +65,7 @@ func (pool *BytePool) Set(index int32, key []byte) error {
 		return fmt.Errorf("elemSize large than maxSize %d %d", len(key), pool.maxElemSize)
 	}
 
-	start := int(index) * pool.maxElemSize
+	start := int(index) * pool.maxElemSize // 起始位置
 	copy(pool.buf[start:], key)
 
 	pool.length[index] = uint32(len(key))
@@ -70,6 +80,7 @@ func (pool *BytePool) Set(index int32, key []byte) error {
 //
 // RETURNS:
 //   - key: []byte type store in the BytePool
+// 获取index位置的key
 func (pool *BytePool) Get(index int32) []byte {
 	start := int(index) * pool.maxElemSize
 	end := start + int(pool.length[index])

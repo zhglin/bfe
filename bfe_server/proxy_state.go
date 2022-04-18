@@ -22,6 +22,8 @@ import (
 
 type ProxyState struct {
 	// panic
+
+	// panic链接数
 	PanicClientConnServe *metrics.Counter // panic when accept from client
 	PanicBackendWrite    *metrics.Counter // panic when write to backend
 	PanicBackendRead     *metrics.Counter // panic when read from backend
@@ -30,11 +32,11 @@ type ProxyState struct {
 	ErrClientLongUrl        *metrics.Counter
 	ErrClientLongHeader     *metrics.Counter
 	ErrClientClose          *metrics.Counter
-	ErrClientTimeout        *metrics.Counter
+	ErrClientTimeout        *metrics.Counter // accept中timeout错误数
 	ErrClientBadRequest     *metrics.Counter
 	ErrClientZeroContentlen *metrics.Counter
 	ErrClientExpectFail     *metrics.Counter
-	ErrClientConnAccept     *metrics.Counter
+	ErrClientConnAccept     *metrics.Counter // accept错误的次数
 	ErrClientWrite          *metrics.Counter
 	ErrClientReset          *metrics.Counter
 

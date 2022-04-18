@@ -25,6 +25,7 @@ import (
 )
 
 // RegisterModules registers bfe work module.
+// 注册配置的module
 func (srv *BfeServer) RegisterModules(modules []string) error {
 	if modules == nil {
 		return nil

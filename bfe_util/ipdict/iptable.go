@@ -21,11 +21,13 @@ import (
 	"sync"
 )
 
+// IPTable ip表
 type IPTable struct {
 	lock    sync.RWMutex
 	ipItems *IPItems
 }
 
+// NewIPTable 创建
 func NewIPTable() *IPTable {
 	table := new(IPTable)
 	return table
@@ -43,6 +45,7 @@ func (t *IPTable) Version() string {
 }
 
 // Update provides for thread-safe switching items
+// 提供线程安全的切换项
 func (t *IPTable) Update(items *IPItems) {
 	t.lock.Lock()
 	t.ipItems = items
@@ -50,6 +53,7 @@ func (t *IPTable) Update(items *IPItems) {
 }
 
 // Search provides for binary search IP in dict
+// 搜索指定的ip
 func (t *IPTable) Search(srcIP net.IP) bool {
 	var hit bool
 	t.lock.RLock()
@@ -62,24 +66,28 @@ func (t *IPTable) Search(srcIP net.IP) bool {
 	}
 	// convert ip to ipv6
 	ip16 := srcIP.To16()
-
+	// 不是合法的ip地址
 	if ip16 == nil {
 		return false
 	}
 
 	// 1. check at the ip set
+	// 是否在ip的HashSet中
 	if ipItems.ipSet.Exist(ip16) {
 		return true
 	}
 
 	// 2. check at the item array
+	// 是否在范围ip中
 	items := ipItems.items
 	itemsLen := len(items)
 
+	// items[i].startIP<= ip16
 	i := sort.Search(itemsLen,
 		func(i int) bool { return bytes.Compare(items[i].startIP, ip16) <= 0 })
 
 	if i < itemsLen {
+		// items[i].endIP >= ip16
 		if bytes.Compare(items[i].endIP, ip16) >= 0 {
 			hit = true
 		}

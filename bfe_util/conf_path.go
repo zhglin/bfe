@@ -30,6 +30,14 @@ import (
 //      (1) path starts with "/", it's absolute path, return path untouched
 //      (2) else, it's relative path, return path.Join(confRoot, path)
 //
+// ConfPathProc配置文件的返回路径
+// 参数:
+// - confPath:配置文件的原始路径
+// - confRoot: ALL配置的根路径
+// 返回:
+// 配置文件的最终路径
+// (1)路径以“/”开头，它是绝对路径，不动返回路径
+// (2) else，它是相对路径，返回路径。加入(confRoot路径)
 func ConfPathProc(confPath string, confRoot string) string {
 	if !strings.HasPrefix(confPath, "/") {
 		// relative path to confRoot

@@ -27,13 +27,16 @@ import (
  * hash array can be LOAD_FACTOR times larger than nodePool
  */
 const (
-	LOAD_FACTOR = 5
+	LOAD_FACTOR = 5 // 减少hash冲突
 )
 
 // index table of hashSet
+// hashSet的索引表
 type hashArray []int32
 
 // make a new hashArray and init it
+// 创建一个新的hashArray并初始化它
+// 元素值记录的是node_pool的下标，如果hash冲突记录的是node_pool中最后一个冲突的元素下标值
 func newHashArray(indexSize int) hashArray {
 	ha := make(hashArray, indexSize)
 	for i := 0; i < indexSize; i += 1 {
@@ -44,12 +47,17 @@ func newHashArray(indexSize int) hashArray {
 }
 
 type HashSet struct {
-	ha          hashArray // hashArray, the index table for nodePool
-	haSize      int       // hashArray size
-	isFixKeyLen bool      // fixed element size or not
+	// nodePool的索引表
+	ha hashArray // hashArray, the index table for nodePool
+	// 能存储元素数量
+	haSize int // hashArray size
+	// 是否固定元素大小
+	isFixKeyLen bool // fixed element size or not
 
+	// 管理hashSet的元素
 	np *nodePool // nodePool manage the elements of hashSet
 
+	// hash函数
 	hashFunc func(key []byte) uint64 //function for hash
 }
 
@@ -64,6 +72,15 @@ type HashSet struct {
 // RETURNS:
 //  - (*HashSet, nil), if success
 //  - (nil, error), if fail
+// NewHashSet创建一个NewHashSet
+// 参数:
+// - elemNum: hashSet的最大元素数
+// - elemSize: hashKey转换为[]字节后的最大大小
+// - isFixKeyLen:是否固定元素大小
+// - hashFunc:哈希函数
+// 返回:
+// - (*HashSet, nil)，如果成功
+// - (nil, error)，如果失败
 func NewHashSet(elemNum int, elemSize int, isFixKeyLen bool,
 	hashFunc func([]byte) uint64) (*HashSet, error) {
 	if elemNum <= 0 || elemSize <= 0 {
@@ -73,11 +90,12 @@ func NewHashSet(elemNum int, elemSize int, isFixKeyLen bool,
 	hashSet := new(HashSet)
 
 	// hashArray is larger in order to reduce hash conflict
+	// hashArray变大是为了减少hash冲突
 	hashSet.haSize = elemNum * LOAD_FACTOR
 	hashSet.isFixKeyLen = isFixKeyLen
 	hashSet.ha = newHashArray(hashSet.haSize)
 
-	// create nodePool
+	// create nodePool 创建nodePool
 	hashSet.np = newNodePool(elemNum, elemSize, isFixKeyLen)
 
 	// if hashFunc is not given, use default murmur Hash
@@ -98,6 +116,12 @@ func NewHashSet(elemNum int, elemSize int, isFixKeyLen bool,
 // RETURNS:
 //   - nil, if succeed
 //   - error, if fail
+// Add -在集合中添加一个元素
+// 参数:
+// - key:[]字节，元素的集合
+// 返回:
+// - nil，如果成功
+// - 错误，如果失败
 func (set *HashSet) Add(key []byte) error {
 	// check the whether hashSet if full
 	if set.Full() {
@@ -111,21 +135,25 @@ func (set *HashSet) Add(key []byte) error {
 	}
 
 	// 1. calculate the hash num
+	// 计算哈希值
 	hashNum := set.hashFunc(key) % uint64(set.haSize)
 
 	// 2. check if the key slice exist
+	// 检查键片是否存在
 	if set.exist(hashNum, key) {
 		return nil
 	}
 
 	// 3. add the key into nodePool
-	head := set.ha[hashNum]
+	// 添加
+	head := set.ha[hashNum] // hash冲突有值 不冲突=-1
 	newHead, err := set.np.add(head, key)
 	if err != nil {
 		return err
 	}
 
 	// 4. point to the new list head node
+	// 设置node_pool中位置
 	set.ha[hashNum] = newHead
 
 	return nil
@@ -139,6 +167,12 @@ func (set *HashSet) Add(key []byte) error {
 // RETURNS:
 //   - nil, if succeed
 //   - error, if fail
+// 移除hashSet中的一个元素
+// 参数:
+// - key:[]字节，元素的集合
+// 返回:
+// - nil，如果成功
+// - 错误，如果失败
 func (set *HashSet) Remove(key []byte) error {
 	// validate hashKey
 	err := set.np.validateKey(key)
@@ -150,6 +184,7 @@ func (set *HashSet) Remove(key []byte) error {
 
 	//2. remove key from hashNode
 	head := set.ha[hashNum]
+	// -1说明不存在
 	if head == -1 {
 		return nil
 	}
@@ -162,6 +197,7 @@ func (set *HashSet) Remove(key []byte) error {
 }
 
 // Exist checks if the element exist in Set
+// 检查该元素是否存在于Set中
 func (set *HashSet) Exist(key []byte) bool {
 	//validate hashKey
 	err := set.np.validateKey(key)
@@ -174,6 +210,7 @@ func (set *HashSet) Exist(key []byte) bool {
 }
 
 // exist checks the []byte exist in the giving list head
+// 校验key是否已存在
 func (set *HashSet) exist(hashNum uint64, key []byte) bool {
 	head := set.ha[hashNum]
 	return set.np.exist(head, key)
@@ -185,6 +222,7 @@ func (set *HashSet) Len() int {
 }
 
 // Full checks if the hashSet full or not
+// 检查hashSet是否已满
 func (set *HashSet) Full() bool {
 	return set.np.full()
 }

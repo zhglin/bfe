@@ -16,9 +16,12 @@ package byte_pool
 
 import "fmt"
 
+// FixedBytePool 元素长度固定的内存池
 type FixedBytePool struct {
-	buf        []byte
-	elemSize   int // element length
+	buf []byte
+	// 单个元素的长度
+	elemSize int // element length
+	// 元素数量
 	maxElemNum int // max element num
 }
 
@@ -30,6 +33,12 @@ type FixedBytePool struct {
 //
 // RETURNS:
 //   - a pointer point to the FixedBytePool
+//创建一个新的FixedBytePool
+//参数:
+// - elemNum: int, FixedBytePool的最大元素数
+// - elemSize: int，每个元素的最大长度
+//返回:
+// - 指向FixedBytePool的指针
 func NewFixedBytePool(elemNum int, elemSize int) *FixedBytePool {
 	pool := new(FixedBytePool)
 	pool.buf = make([]byte, elemNum*elemSize)
@@ -44,6 +53,7 @@ func NewFixedBytePool(elemNum int, elemSize int) *FixedBytePool {
 // PARAMS:
 //   - index: index of the byte Pool
 //   - key: []byte key
+// index位置写入key
 func (pool *FixedBytePool) Set(index int32, key []byte) error {
 	if int(index) >= pool.maxElemNum {
 		return fmt.Errorf("index out of range %d %d", index, pool.maxElemNum)
@@ -52,7 +62,7 @@ func (pool *FixedBytePool) Set(index int32, key []byte) error {
 	if len(key) != pool.elemSize {
 		return fmt.Errorf("length must be %d while %d", pool.elemSize, len(key))
 	}
-	start := int(index) * pool.elemSize
+	start := int(index) * pool.elemSize // 字节的起始位置
 	copy(pool.buf[start:], key)
 
 	return nil
@@ -65,14 +75,16 @@ func (pool *FixedBytePool) Set(index int32, key []byte) error {
 //
 // RETURNS:
 //   - key: []byte type store in the FixedBytePool
+// 读取index位置的key
 func (pool *FixedBytePool) Get(index int32) []byte {
-	start := int(index) * pool.elemSize
-	end := start + pool.elemSize
+	start := int(index) * pool.elemSize // 起始位置
+	end := start + pool.elemSize        // 结束位置
 
 	return pool.buf[start:end]
 }
 
 // MaxElemSize return the space allocate for each element
+// 返回每个元素的空间分配
 func (pool *FixedBytePool) MaxElemSize() int {
 	return pool.elemSize
 }

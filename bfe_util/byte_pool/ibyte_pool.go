@@ -14,6 +14,7 @@
 
 package byte_pool
 
+// IBytePool 内存池接口
 type IBytePool interface {
 	Set(int32, []byte) error
 	Get(int32) []byte

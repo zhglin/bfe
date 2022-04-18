@@ -52,16 +52,26 @@ var ErrBodyNotAllowed = errors.New("http: request method or response status code
 
 // A Server defines parameters for running an HTTP server.
 // The zero value for Server is a valid configuration.
+// Server定义运行HTTP服务器的参数。
+// Server的0值是一个有效的配置。
 type Server struct {
-	Addr                    string        // TCP address to listen on, ":http" if empty
-	Handler                 Handler       // handler to invoke, http.DefaultServeMux if nil
-	ReadTimeout             time.Duration // maximum duration before timing out read of the request
-	WriteTimeout            time.Duration // maximum duration before timing out write of the response
-	TlsHandshakeTimeout     time.Duration // maximum duration before timing out handshake
+	// 要监听的TCP地址，如果为空则为:http
+	Addr    string  // TCP address to listen on, ":http" if empty
+	Handler Handler // handler to invoke, http.DefaultServeMux if nil
+	// 读取请求超时前的最大持续时间
+	ReadTimeout time.Duration // maximum duration before timing out read of the request
+	// 响应写超时前的最大持续时间
+	WriteTimeout time.Duration // maximum duration before timing out write of the response
+	// 握手超时前的最大时长
+	TlsHandshakeTimeout time.Duration // maximum duration before timing out handshake
+	// 优雅关机超时，以秒为单位
 	GracefulShutdownTimeout time.Duration // maximum duration before timing out graceful shutdown
-	MaxHeaderBytes          int           // maximum size of request headers, DefaultMaxHeaderBytes if 0
-	MaxHeaderUriBytes       int           // max URI(in header) length in bytes in request
-	TLSConfig               *tls.Config   // optional TLS config, used by ListenAndServeTLS
+	// 请求头的最大大小，如果为0则为DefaultMaxHeaderBytes
+	MaxHeaderBytes int // maximum size of request headers, DefaultMaxHeaderBytes if 0
+	// 请求中的最大URI(头)长度(以字节为单位)
+	MaxHeaderUriBytes int // max URI(in header) length in bytes in request
+	// 可选TLS配置，由ListenAndServeTLS使用
+	TLSConfig *tls.Config // optional TLS config, used by ListenAndServeTLS
 
 	// TLSNextProto optionally specifies a function to take over
 	// ownership of the provided TLS connection when an NPN
@@ -76,6 +86,7 @@ type Server struct {
 	// ownership of the http connection when an HTTP Upgrade has
 	// occurred. The map key is the protocol name negotiated (eg
 	// websocket, h2c)
+	// HTTPNextProto可选地指定一个函数，当http升级发生时接管http连接的所有权。map键是协商的协议名(如websocket, h2c)
 	HTTPNextProto map[string]func(*Server, ResponseWriter, *Request)
 
 	// ConnState specifies an optional callback function that is
@@ -92,6 +103,7 @@ type Server struct {
 	disableKeepAlives int32 // accessed atomically.
 
 	// CloseNotifyCh allow detecting when the server in graceful shutdown state
+	// 允许检测服务器何时处于优雅关机状态
 	CloseNotifyCh chan bool
 }
 
@@ -103,6 +115,8 @@ func (s *Server) DoKeepAlives() bool {
 // By default, keep-alives are always enabled. Only very
 // resource-constrained environments or servers in the process of
 // shutting down should disable them.
+// SetKeepAlivesEnabled控制是否启用HTTP keep-alive。
+// 缺省情况下，保持连接总是使能状态。只有资源非常有限的环境或正在关闭的服务器才应该禁用它们。
 func (s *Server) SetKeepAlivesEnabled(v bool) {
 	if v {
 		atomic.StoreInt32(&s.disableKeepAlives, 0)

@@ -33,7 +33,7 @@ import (
 )
 
 const (
-	defaultBufSize = 4096
+	defaultBufSize = 4096 // 默认的缓冲区大小
 )
 
 var (
@@ -46,6 +46,7 @@ var (
 // Buffered input.
 
 // Reader implements buffering for an io.Reader object.
+// 实现io.Reader缓冲读。
 type Reader struct {
 	buf          []byte
 	rd           io.Reader
@@ -54,16 +55,20 @@ type Reader struct {
 	lastByte     int
 	lastRuneSize int
 
+	// 总读字节数
 	TotalRead int // number of bytes total read
 }
 
+// 最下的读缓冲区的大小
 const minReadBufferSize = 16
 
 // NewReaderSize returns a new Reader whose buffer has at least the specified
 // size. If the argument io.Reader is already a Reader with large enough
 // size, it returns the underlying Reader.
+// NewReaderSize返回一个新的Reader，它的缓冲区至少有指定的大小。如果参数io.Reader已经是一个足够大的Reader，它返回底层的Reader。
 func NewReaderSize(rd io.Reader, size int) *Reader {
 	// Is it already a Reader?
+	// 已经是个缓冲读对象，并且buf大小满足size条件
 	b, ok := rd.(*Reader)
 	if ok && len(b.buf) >= size {
 		return b
@@ -71,25 +76,29 @@ func NewReaderSize(rd io.Reader, size int) *Reader {
 	if size < minReadBufferSize {
 		size = minReadBufferSize
 	}
+	// 创建并重置
 	r := new(Reader)
 	r.reset(make([]byte, size), rd)
 	return r
 }
 
 // NewReader returns a new Reader whose buffer has the default size.
+// 返回一个新的Reader，它的缓冲区具有默认大小。
 func NewReader(rd io.Reader) *Reader {
 	return NewReaderSize(rd, defaultBufSize)
 }
 
 // Reset discards any buffered data, resets all state, and switches
 // the buffered reader to read from r.
+// Reset丢弃任何缓存的数据，重置所有状态，并将缓存读取器切换到从r读取数据。
 func (b *Reader) Reset(r io.Reader) {
 	b.reset(b.buf, r)
 }
 
+// 重置缓冲
 func (b *Reader) reset(buf []byte, r io.Reader) {
 	*b = Reader{
-		buf:          buf,
+		buf:          buf, // 没有清空
 		rd:           r,
 		lastByte:     -1,
 		lastRuneSize: -1,
@@ -528,12 +537,14 @@ type Writer struct {
 	n   int
 	wr  io.Writer
 
+	// 总写入字节数
 	TotalWrite int // number of bytes total write
 }
 
 // NewWriterSize returns a new Writer whose buffer has at least the specified
 // size. If the argument io.Writer is already a Writer with large enough
 // size, it returns the underlying Writer.
+// NewWriterSize返回一个新的Writer，它的缓冲区至少有指定的大小。如果参数io.Writer已经是一个足够大的Writer，它返回底层的Writer。
 func NewWriterSize(w io.Writer, size int) *Writer {
 	// Is it already a Writer?
 	b, ok := w.(*Writer)
@@ -565,6 +576,7 @@ func (b *Writer) Reset(w io.Writer) {
 }
 
 // Flush writes any buffered data to the underlying io.Writer.
+// 将任何缓冲数据写入底层io.Writer。
 func (b *Writer) Flush() error {
 	err := b.flush()
 	return err
@@ -750,12 +762,15 @@ func (b *Writer) ReadFrom(r io.Reader) (n int64, err error) {
 
 // ReadWriter stores pointers to a Reader and a Writer.
 // It implements io.ReadWriter.
+// ReadWriter存储指向Reader和Writer的指针。
+// 实现io.ReadWriter。
 type ReadWriter struct {
 	*Reader
 	*Writer
 }
 
 // NewReadWriter allocates a new ReadWriter that dispatches to r and w.
+// 分配一个新的读写器分派给r和w。
 func NewReadWriter(r *Reader, w *Writer) *ReadWriter {
 	return &ReadWriter{r, w}
 }

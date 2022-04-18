@@ -18,18 +18,21 @@ import (
 	"sync"
 )
 
+// ProductRuleTable 规则表
 type ProductRuleTable struct {
 	lock         sync.RWMutex
 	version      string
 	productRules ProductRules
 }
 
+// NewProductRuleTable 创建规则表
 func NewProductRuleTable() *ProductRuleTable {
 	t := new(ProductRuleTable)
 	t.productRules = make(ProductRules)
 	return t
 }
 
+// Update 设置rules
 func (t *ProductRuleTable) Update(conf productRuleConf) {
 	t.lock.Lock()
 	t.version = conf.Version

@@ -27,10 +27,11 @@ import (
 )
 
 const (
-	IP_LENGTH = 16
+	IP_LENGTH = 16 // ip地址的长度 2个字节
 )
 
 // Hash is a hash method which convert net.IP to type uint64.
+// 是一种转换网络的哈希方法。IP到类型uint64。
 func Hash(ip []byte) uint64 {
 	hash64 := fnv.New64()
 	hash64.Write(ip)
@@ -45,9 +46,10 @@ type ipPair struct {
 type ipPairs []ipPair
 
 // IPItems manage single IP(hashSet) and ipPairs
+// 管理单个IP(hashSet)和ipPairs
 type IPItems struct {
-	ipSet   *hash_set.HashSet
-	items   ipPairs
+	ipSet   *hash_set.HashSet // 单一ip
+	items   ipPairs           // 范围Ip
 	Version string
 }
 
@@ -62,8 +64,11 @@ func NewIPItems(maxSingleIPNum int, maxPairIPNum int) (*IPItems, error) {
 	ipItems := new(IPItems)
 
 	// create a hashSet for single IPs
+	// IP地址是固定大小
 	isFixedSize := true // ip address is fixed size(IP_LENGTH)
+	// hash_set不支持maxSingleIPNum == 0
 	maxSingleIPNum += 1 // +1, hash_set don't support maxSingleIPNum == 0
+	// hash_set
 	ipItems.ipSet, err = hash_set.NewHashSet(maxSingleIPNum, IP_LENGTH, isFixedSize, Hash)
 	if err != nil {
 		return nil, err
@@ -166,6 +171,7 @@ func (ipItems *IPItems) mergeItems() int {
 }
 
 // InsertPair provides insert startIP,endIP into IpItems
+// 提供插入startIP,endIP到IpItems
 func (ipItems *IPItems) InsertPair(startIP, endIP net.IP) error {
 	if err := checkIPPair(startIP, endIP); err != nil {
 		return fmt.Errorf("InsertPair failed: %s", err.Error())
@@ -179,6 +185,7 @@ func (ipItems *IPItems) InsertPair(startIP, endIP net.IP) error {
 }
 
 // InsertSingle insert single ip into ipitems
+// hashSet 插入单个IP到ipitems
 func (ipItems *IPItems) InsertSingle(ip net.IP) error {
 	ip16 := ip.To16()
 	if ip16 == nil {

@@ -27,6 +27,7 @@ import (
 	"github.com/bfenetworks/bfe/bfe_util/json"
 )
 
+// 信号处理函数
 type signalHandler func(s os.Signal)
 
 type SignalTable struct {
@@ -35,6 +36,7 @@ type SignalTable struct {
 }
 
 // NewSignalTable creates and init signal table
+// 创建并初始化信号表
 func NewSignalTable() *SignalTable {
 	table := new(SignalTable)
 	table.shs = make(map[os.Signal]signalHandler)
@@ -43,6 +45,7 @@ func NewSignalTable() *SignalTable {
 }
 
 // Register registers signal handle to the table
+// 注册信号以及回调函数
 func (t *SignalTable) Register(s os.Signal, handler signalHandler) {
 	if _, ok := t.shs[s]; !ok {
 		t.shs[s] = handler
@@ -50,8 +53,9 @@ func (t *SignalTable) Register(s os.Signal, handler signalHandler) {
 }
 
 // handle handles the related signal
+// 执行信号处理函数
 func (t *SignalTable) handle(sig os.Signal) {
-	t.state.Inc(sig.String(), 1)
+	t.state.Inc(sig.String(), 1) // 统计
 
 	if handler, ok := t.shs[sig]; ok {
 		handler(sig)
@@ -59,6 +63,7 @@ func (t *SignalTable) handle(sig os.Signal) {
 }
 
 // signalHandle is the signal handle loop
+// 循环监听信号
 func (t *SignalTable) signalHandle() {
 
 	var sigs []os.Signal
@@ -76,11 +81,13 @@ func (t *SignalTable) signalHandle() {
 }
 
 // StartSignalHandle start go-routine for signal handle
+// 启动信号处理程序
 func (t *SignalTable) StartSignalHandle() {
-	go t.signalHandle()
+	go t.signalHandle() // 协程执行
 }
 
 // SignalStateGet get state counter of signal handle
+// 获取信号的状态计数器
 func (t *SignalTable) SignalStateGet() ([]byte, error) {
 
 	buff, err := json.Marshal(t.state.GetAll())

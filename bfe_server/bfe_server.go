@@ -52,10 +52,14 @@ type BfeServer struct {
 	bfe_http.Server
 
 	// service listeners
-	listenerMap   map[string]net.Listener // all listeners
-	HttpListener  net.Listener            // listener for http
-	HttpsListener *HttpsListener          // listener for https
 
+	// 所有的listenerMap
+	listenerMap map[string]net.Listener // all listeners
+	// http协议listener
+	HttpListener net.Listener // listener for http
+	// https协议listener
+	HttpsListener *HttpsListener // listener for https
+	// 等待服务器链接处理完成
 	connWaitGroup sync.WaitGroup // waits for server conns to finish
 
 	// for http server
@@ -71,24 +75,28 @@ type BfeServer struct {
 	TLSServerRule *TLSServerRuleMap
 
 	// server config
-	Config   bfe_conf.BfeConfig
-	ConfRoot string
+	Config   bfe_conf.BfeConfig // 配置项
+	ConfRoot string             // 配置文件根目录
 
 	// module and callback
+
+	// 所有类型的回调
 	CallBacks *bfe_module.BfeCallbacks // call back functions
 	Modules   *bfe_module.BfeModules   // bfe modules
 	Plugins   *bfe_module.BfePlugins   // bfe plugins
 
 	// web server for bfe monitor and reload
+	// Web服务器用于bfe监控和重新加载
 	Monitor *BfeMonitor
 
-	// bufio cache
+	// bufio cache buffer
 	BufioCache *BufioCache
 
 	// signal table
+	// 监听的相关信号
 	SignalTable *signal_table.SignalTable
 
-	// server status
+	// server status 各种状态统计相关
 	serverStatus *ServerStatus
 
 	confLock   sync.RWMutex              // mutex when reload data conf
@@ -99,36 +107,41 @@ type BfeServer struct {
 }
 
 // NewBfeServer create a new instance of BfeServer.
+// 创建一个新的BfeServer实例。
 func NewBfeServer(cfg bfe_conf.BfeConfig, confRoot string,
 	version string) *BfeServer {
 
 	s := new(BfeServer)
 
-	// bfe config
+	// bfe config 设置属性
 	s.Config = cfg
 	s.ConfRoot = confRoot
 	s.InitConfig()
 
 	// initialize counters, proxyState
+	// 状态 统计相关
 	s.serverStatus = NewServerStatus()
 
 	// initialize bufioCache
+	// buffer
 	s.BufioCache = NewBufioCache()
 
 	// create reverse proxy
+	// 创建反向代理
 	s.ReverseProxy = NewReverseProxy(s, s.serverStatus.ProxyState)
 
-	// initialize callbacks
+	// initialize callbacks 回调函数
 	s.CallBacks = bfe_module.NewBfeCallbacks()
-	// create modules
+	// create modules 模块
 	s.Modules = bfe_module.NewBfeModules()
-	// create plugins
+	// create plugins 动态插件
 	s.Plugins = bfe_module.NewBfePlugins()
 
-	// initialize balTable
+	// initialize balTable 集群相关
 	s.balTable = bfe_balance.NewBalTable(s.GetCheckConf)
 
 	// set keep-alive
+	// 设置http keep-alive
 	s.SetKeepAlivesEnabled(cfg.Server.KeepAliveEnabled)
 
 	s.CloseNotifyCh = make(chan bool)
@@ -139,6 +152,7 @@ func NewBfeServer(cfg bfe_conf.BfeConfig, confRoot string,
 }
 
 // InitConfig set some parameter based on config.
+// 配置http相关配置
 func (srv *BfeServer) InitConfig() {
 	// set service port, according to config
 	srv.Addr = fmt.Sprintf(":%d", srv.Config.Server.HttpPort)
@@ -314,6 +328,7 @@ func (srv *BfeServer) initTLSNextProtoHandler() {
 	bfe_stream.SetServerRule(srv.TLSServerRule)
 }
 
+// InitModules 初始化配置的module
 func (srv *BfeServer) InitModules() error {
 	return srv.Modules.Init(srv.CallBacks, srv.Monitor.WebHandlers, srv.ConfRoot)
 }
@@ -338,6 +353,7 @@ func (srv *BfeServer) InitPlugins() error {
 	return srv.Plugins.Init(srv.CallBacks, srv.Monitor.WebHandlers, srv.ConfRoot)
 }
 
+// InitSignalTable 初始化信号监听表
 func (srv *BfeServer) InitSignalTable() {
 	/* create signal table */
 	srv.SignalTable = signal_table.NewSignalTable()
@@ -401,6 +417,7 @@ Loop:
 }
 
 // CheckGracefulShutdown check whether the server is in graceful shutdown state.
+// 检查服务器是否处于安全关机状态。
 func (srv *BfeServer) CheckGracefulShutdown() bool {
 	select {
 	case <-srv.CloseNotifyCh:
@@ -429,6 +446,7 @@ func (srv *BfeServer) GetCheckConf(clusterName string) *cluster_conf.BackendChec
 	return cluster.BackendCheckConf()
 }
 
+// InitListeners 监听端口 http,https
 func (srv *BfeServer) InitListeners(config bfe_conf.BfeConfig) error {
 	listenerMap := make(map[string]net.Listener)
 	lnConf := map[string]int{
@@ -443,6 +461,7 @@ func (srv *BfeServer) InitListeners(config bfe_conf.BfeConfig) error {
 		}
 
 		// wrap underlying listener according to balancer type
+		// 根据balancer类型包装底层侦听器
 		listener = NewBfeListener(listener, config)
 		listenerMap[proto] = listener
 		log.Logger.Info("InitListeners(): begin to listen [:%d]", port)

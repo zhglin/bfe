@@ -63,12 +63,15 @@ var errTooLarge = errors.New("http: request too large")
 
 // A switchReader can have its Reader changed at runtime.
 // It's not safe for concurrent Reads and switches.
+// switchReader可以在运行时修改它的Reader。
+// 对于并发读和交换来说是不安全的。
 type switchReader struct {
 	io.Reader
 }
 
 // A liveSwitchReader is a switchReader that's safe for concurrent
 // reads and switches, if its mutex is held.
+// 一个liveSwitchReader是一个switchReader，如果它的互斥对象被持有，那么对于并发读取和交换机来说是安全的。
 type liveSwitchReader struct {
 	sync.Mutex
 	r io.Reader
@@ -82,18 +85,29 @@ func (sr *liveSwitchReader) Read(p []byte) (n int, err error) {
 }
 
 // conn represents the server side of an HTTP/HTTPS connection.
+// 表示HTTP/HTTPS连接的服务器端。
 type conn struct {
-	// immutable:
-	remoteAddr string             // network address of remote side
-	server     *BfeServer         // the Server on which the connection arrived
-	rwc        net.Conn           // i/o connection
-	session    *bfe_basic.Session // for maintain connection information
+	// immutable: 不可变的
+
+	// 远端网络地址 客户端地址
+	remoteAddr string // network address of remote side
+	// 连接到达的服务器
+	server *BfeServer // the Server on which the connection arrived
+	// 原始链接
+	rwc net.Conn // i/o connection
+	// 关于维护连接信息
+	session *bfe_basic.Session // for maintain connection information
 
 	// for http/https:
-	sr    liveSwitchReader      // where the LimitReader reads from; usually the rwc
-	lr    *io.LimitedReader     // io.LimitReader(sr)
-	buf   *bfe_bufio.ReadWriter // buffered(lr,rwc), reading from bufio->limitReader->sr->rwc
-	reqSN uint32                //number of requests arrived on this connection
+
+	// LimitReader从哪里读取;通常rwc
+	sr liveSwitchReader // where the LimitReader reads from; usually the rwc
+	// 从rwc读取，但限制可以读取的数据的量为最多N字节，每次调用Read方法都会更新N以标记剩余可以读取的字节数。
+	lr *io.LimitedReader // io.LimitReader(sr)
+	// 具有缓冲的读写
+	buf *bfe_bufio.ReadWriter // buffered(lr,rwc), reading from bufio->limitReader->sr->rwc
+	// 到达此连接的请求数
+	reqSN uint32 //number of requests arrived on this connection
 
 	mu           sync.Mutex // guards the following
 	clientGone   bool       // if client has disconnected mid-request
@@ -134,9 +148,14 @@ func (c *conn) noteClientGone() {
 }
 
 // noLimit is an effective infinite upper bound for io.LimitedReader
+// 是io.LimitedReader的有效无限上界。LimitedReader
 const noLimit int64 = (1 << 63) - 1
 
 // Create new connection from rwc.
+// 创建新的链接 这里的rwc为bfe_tls.Conn, bfe_proxy.Conn，net.Conn
+// https rwc = bfe_tls.Conn
+// proxy rwc = bfe_proxy.Conn
+// 其他   rwc = net.Conn
 func newConn(rwc net.Conn, srv *BfeServer) (c *conn, err error) {
 	c = new(conn)
 	c.remoteAddr = rwc.RemoteAddr().String()
@@ -144,7 +163,9 @@ func newConn(rwc net.Conn, srv *BfeServer) (c *conn, err error) {
 	c.rwc = rwc
 	c.sr = liveSwitchReader{r: c.rwc}
 	c.lr = io.LimitReader(&c.sr, noLimit).(*io.LimitedReader)
+	// 基于lr的读缓冲
 	br := srv.BufioCache.newBufioReader(c.lr)
+	// 基于rwc的写缓冲
 	bw := srv.BufioCache.newBufioWriterSize(c.rwc, 4<<10)
 	c.buf = bfe_bufio.NewReadWriter(br, bw)
 	c.reqSN = 0
@@ -204,6 +225,7 @@ func (c *conn) readRequest() (request *bfe_basic.Request, err error) {
 	return bfe_basic.NewRequest(req, c.rwc, reqStat, c.session, sf), nil
 }
 
+// 写入缓冲区
 func (c *conn) finalFlush() {
 	if c.buf != nil {
 		c.buf.Flush()
@@ -222,6 +244,7 @@ func (c *conn) finalFlush() {
 }
 
 // Close the connection.
+// 关闭连接。
 func (c *conn) close() {
 	c.finalFlush()
 	c.rwc.Close()
@@ -251,6 +274,7 @@ func (c *conn) closeWriteAndWait() {
 }
 
 // callback of finish connection
+// 链接处理完成的回调
 func (c *conn) finish() {
 	srv := c.server
 
@@ -258,6 +282,7 @@ func (c *conn) finish() {
 	c.session.Finish()
 
 	// Callback for HandleFinish
+	// 回调
 	hl := srv.CallBacks.GetHandlerList(bfe_module.HandleFinish)
 	if hl != nil {
 		hl.FilterFinish(c.session)
@@ -271,11 +296,15 @@ func (c *conn) getMandatoryProtocol(tlsConn *bfe_tls.Conn) (string, bool) {
 }
 
 // Serve a new connection.
+// 服务一个新的连接。
 func (c *conn) serve() {
 	var hl *bfe_module.HandlerList
 	var retVal int
+	// 会话
 	session := c.session
+	// 增加wait
 	c.server.connWaitGroup.Add(1)
+	// 状态
 	serverStatus := c.server.serverStatus
 	proxyState := serverStatus.ProxyState
 
@@ -289,6 +318,8 @@ func (c *conn) serve() {
 
 			proxyState.PanicClientConnServe.Inc(1)
 		}
+
+		// 减少wait计数
 		c.server.connWaitGroup.Done()
 	}()
 
@@ -306,6 +337,7 @@ func (c *conn) serve() {
 	}()
 
 	// Callback for HANDLE_ACCEPT
+	// accept的回调
 	hl = c.server.CallBacks.GetHandlerList(bfe_module.HandleAccept)
 	if hl != nil {
 		retVal = hl.FilterAccept(c.session)

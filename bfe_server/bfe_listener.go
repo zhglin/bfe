@@ -38,23 +38,29 @@ import (
 
 // BfeListener is used to wrap an underlying TCP listener, which accept connections
 // behind a layer4 load balancer (PROXY)
+// BfeListener用于包装底层的TCP监听器，它接受连接后的4层负载均衡器(PROXY)
 type BfeListener struct {
 	// Listener is the underlying tcp listener
+	// 原始listener
 	Listener net.Listener
 
 	// BalancerType is the type of Layer4 load balancer
+	// 是四层负载均衡器
 	BalancerType string
 
 	// ProxyHeaderTimeout Optionally specifies the timeout value to
 	// receive the Proxy Protocol Header. Zero means no timeout.
+	// ProxyHeaderTimeout可选参数，指定代理协议头接收超时时间。0表示没有超时。
 	ProxyHeaderTimeout time.Duration
 
 	// ProxyHeaderLimit Optionally specifies the maximum bytes to
 	// receive the Proxy Protocol Header. Zero means default value.
+	// ProxyHeaderLimit可选地指定接收代理协议报头的最大字节数。零表示默认值。
 	ProxyHeaderLimit int64
 }
 
 // NewBfeListener return bfe listener according to config
+// 根据配置返回bfe listener
 func NewBfeListener(listener net.Listener, config bfe_conf.BfeConfig) *BfeListener {
 	l := new(BfeListener)
 	l.Listener = listener
@@ -67,6 +73,9 @@ func NewBfeListener(listener net.Listener, config bfe_conf.BfeConfig) *BfeListen
 
 // Accept implements the Accept method in the Listener interface;
 // it waits for the next call and returns a generic net.Conn.
+// Accept实现了Listener接口中的Accept方法;
+// 它等待下一次调用并返回一个通用的net.Conn。
+// 非https的Accept
 func (l *BfeListener) Accept() (net.Conn, error) {
 	conn, err := l.Listener.Accept()
 	if err != nil {
@@ -74,6 +83,7 @@ func (l *BfeListener) Accept() (net.Conn, error) {
 		return nil, err
 	}
 
+	// 如果是BalancerProxy类型，conn转换成bfe_proxy.Conn
 	switch l.BalancerType {
 	case bfe_conf.BalancerProxy:
 		conn = bfe_proxy.NewConn(conn, l.ProxyHeaderTimeout, l.ProxyHeaderLimit)

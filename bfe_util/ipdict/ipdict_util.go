@@ -47,6 +47,7 @@ func loadIPStr(ips ipStrs) (*IPItems, error) {
 	return ipItems, nil
 }
 
+// 校验起始ip，终止ip
 func checkIPPair(startIP, endIP net.IP) error {
 	startIP16 := startIP.To16()
 	if startIP16 == nil {

@@ -106,6 +106,7 @@ func (f *genericResponseFilter) String() string {
 }
 
 // AcceptFilter filters incoming connections.
+// 过滤新建的连接接口。
 type AcceptFilter interface {
 	FilterAccept(*bfe_basic.Session) int
 }
@@ -117,14 +118,17 @@ func NewAcceptFilter(f func(session *bfe_basic.Session) int) AcceptFilter {
 	return rf
 }
 
+// 结构体包装
 type genericAcceptFilter struct {
 	f func(session *bfe_basic.Session) int
 }
 
+// FilterAccept 执行具体的filter函数
 func (f *genericAcceptFilter) FilterAccept(session *bfe_basic.Session) int {
 	return f.f(session)
 }
 
+// 返回函数名
 func (f *genericAcceptFilter) String() string {
 	ptr := reflect.ValueOf(f.f).Pointer()
 	return runtime.FuncForPC(ptr).Name()

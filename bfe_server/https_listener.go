@@ -33,6 +33,7 @@ type HttpsListener struct {
 	lock   sync.Mutex
 }
 
+// NewHttpsListener 创建httpsListener
 func NewHttpsListener(listener net.Listener, config *bfe_tls.Config) *HttpsListener {
 	httpsListener := &HttpsListener{
 		tcpListener: listener,

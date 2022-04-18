@@ -25,34 +25,44 @@ import (
 	"github.com/bfenetworks/bfe/bfe_util/json"
 )
 
+// 配置文件映射
 type blockRuleFile struct {
 	Cond   *string     // condition for block
 	Name   *string     // block rule name
 	Action *ActionFile // action for block
 }
 
+// 内部用配置
 type blockRule struct {
 	Cond   condition.Condition // condition for block
 	Name   string              // block rule name
 	Action Action              // action for block
 }
 
+// 配置文件映射
 type blockRuleFileList []blockRuleFile
+
+// 内部用配置
 type blockRuleList []blockRule
 
+// ProductRulesFile 配置文件映射
 type ProductRulesFile map[string]*blockRuleFileList // product => list of block rules
+// ProductRules 内部用配置
 type ProductRules map[string]*blockRuleList
 
+// 配置文件映射
 type productRuleConfFile struct {
 	Version *string // version of the config
 	Config  *ProductRulesFile
 }
 
+// 内部用配置
 type productRuleConf struct {
 	Version string       // version of the config
 	Config  ProductRules // product rules for block
 }
 
+// blockRuleFile内容校验
 func blockRuleCheck(conf blockRuleFile) error {
 	// check Cond
 	if conf.Cond == nil {
@@ -76,6 +86,7 @@ func blockRuleCheck(conf blockRuleFile) error {
 	return nil
 }
 
+// blockRuleFile内容校验
 func blockRuleListCheck(conf *blockRuleFileList) error {
 	ruleNameMap := make(map[string]bool)
 	for index, rule := range *conf {
@@ -85,6 +96,7 @@ func blockRuleListCheck(conf *blockRuleFileList) error {
 		}
 
 		// check rule name for one product
+		// 检查一个产品的规则名称是否重复配置
 		if _, ok := ruleNameMap[*rule.Name]; ok {
 			return fmt.Errorf("blockRule:%d, two rules have same name[%s]!", index, *rule.Name)
 		}
@@ -94,6 +106,7 @@ func blockRuleListCheck(conf *blockRuleFileList) error {
 	return nil
 }
 
+// ProductRulesFile内容校验
 func productRulesCheck(conf *ProductRulesFile) error {
 	for product, ruleList := range *conf {
 		if ruleList == nil {
@@ -109,6 +122,7 @@ func productRulesCheck(conf *ProductRulesFile) error {
 	return nil
 }
 
+// productRuleConfFile校验
 func productRuleConfCheck(conf productRuleConfFile) error {
 	var err error
 
@@ -130,6 +144,7 @@ func productRuleConfCheck(conf productRuleConfFile) error {
 	return nil
 }
 
+// blockRuleFile转换到blockRule
 func ruleConvert(ruleFile blockRuleFile) (blockRule, error) {
 	rule := blockRule{}
 
@@ -143,6 +158,7 @@ func ruleConvert(ruleFile blockRuleFile) (blockRule, error) {
 	return rule, nil
 }
 
+// blockRuleFileList转换到blockRuleList
 func ruleListConvert(ruleFileList *blockRuleFileList) (*blockRuleList, error) {
 	ruleList := new(blockRuleList)
 	*ruleList = make([]blockRule, 0)
@@ -159,6 +175,7 @@ func ruleListConvert(ruleFileList *blockRuleFileList) (*blockRuleList, error) {
 }
 
 // ProductRuleConfLoad load block rule config from file.
+// 从文件加载规则配置。
 func ProductRuleConfLoad(filename string) (productRuleConf, error) {
 	var conf productRuleConf
 	var err error
@@ -179,12 +196,14 @@ func ProductRuleConfLoad(filename string) (productRuleConf, error) {
 	}
 
 	// check config
+	// 配置内容校验
 	err = productRuleConfCheck(config)
 	if err != nil {
 		return conf, err
 	}
 
 	// convert config
+	// 转换配置
 	conf.Version = *config.Version
 	conf.Config = make(ProductRules)
 	for product, ruleFileList := range *config.Config {

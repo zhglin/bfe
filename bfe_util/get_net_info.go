@@ -32,17 +32,22 @@ type CloseWriter interface {
 }
 
 // AddressFetcher is the interface that group the address related method.
+// 分组地址相关方法的接口。
 type AddressFetcher interface {
 	// RemoteAddr returns the remote network address.
+	// 返回远程网络地址。
 	RemoteAddr() net.Addr
 
 	// LocalAddr returns the local network address.
+	// 返回本地网络地址。
 	LocalAddr() net.Addr
 
 	// VirtualAddr returns the virtual network address.
+	// 返回虚拟网络地址。
 	VirtualAddr() net.Addr
 
 	// BalancerAddr return the balancer network address. May be nil.
+	// 返回均衡器网络地址。可能是零。
 	BalancerAddr() net.Addr
 }
 

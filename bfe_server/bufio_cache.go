@@ -29,6 +29,7 @@ import (
 	bufio "github.com/bfenetworks/bfe/bfe_bufio"
 )
 
+// 不同大小的bufferPool
 var (
 	bufioReaderPool    sync.Pool
 	bufioWriter256Pool sync.Pool
@@ -38,6 +39,7 @@ var (
 	bufioWriter4kPool  sync.Pool
 )
 
+// 根据size大小 返回不同大小的bufferPool
 func bufioWriterPool(size int) *sync.Pool {
 	switch size {
 	case 1 << 8:
@@ -54,6 +56,7 @@ func bufioWriterPool(size int) *sync.Pool {
 	return nil
 }
 
+// BufioCache 缓冲读取
 type BufioCache struct {
 }
 
@@ -61,6 +64,7 @@ func NewBufioCache() *BufioCache {
 	return new(BufioCache)
 }
 
+// 创建缓冲读
 func (*BufioCache) newBufioReader(r io.Reader) *bufio.Reader {
 	if v := bufioReaderPool.Get(); v != nil {
 		br := v.(*bufio.Reader)
@@ -75,6 +79,7 @@ func (*BufioCache) putBufioReader(br *bufio.Reader) {
 	bufioReaderPool.Put(br)
 }
 
+// 创建缓冲写
 func (*BufioCache) newBufioWriterSize(w io.Writer, size int) *bufio.Writer {
 	pool := bufioWriterPool(size)
 	if pool != nil {

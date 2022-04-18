@@ -92,7 +92,7 @@ func main() {
 
 	log.Logger.Info("bfe[version:%s] start", version)
 
-	// load server config
+	// load server config 加载配置
 	confPath := path.Join(*confRoot, "bfe.conf")
 	config, err = bfe_conf.BfeConfigLoad(confPath, *confRoot)
 	if err != nil {
@@ -100,10 +100,12 @@ func main() {
 		bfe_util.AbnormalExit()
 	}
 
-	// maximum number of CPUs (GOMAXPROCS) defaults to runtime.CPUNUM 
+	// maximum number of CPUs (GOMAXPROCS) defaults to runtime.CPUNUM
 	// if running on machine, or CPU quota if running on container
 	// (with the help of "go.uber.org/automaxprocs").
 	// here, we change maximum number of cpus if the MaxCpus is positive.
+	// 最大cpu数(GOMAXPROCS)默认为runtime。如果运行在机器上，则使用CPUNUM;如果运行在容器上，则使用CPU配额(请参考“go.uber.org/automaxprocs”)。
+	// 如果MaxCpus为正数，则改变最大cpu数。
 	if config.Server.MaxCpus > 0 {
 		runtime.GOMAXPROCS(config.Server.MaxCpus)
 	}
@@ -111,7 +113,7 @@ func main() {
 	// set log level
 	bfe_debug.SetDebugFlag(config.Server)
 
-	// start and serve
+	// start and serve 启动serve
 	if err = bfe_server.StartUp(config, version, *confRoot); err != nil {
 		log.Logger.Error("main(): bfe_server.StartUp(): %s", err.Error())
 	}

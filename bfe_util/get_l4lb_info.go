@@ -24,11 +24,16 @@ import (
 )
 
 // GetVipPort return vip and port for given conn
+// 返回指定conn的虚拟ip和port
 func GetVipPort(conn net.Conn) (net.IP, int, error) {
 	// get underlying bfe conn, the given net.Conn may be wired like:
 	//  - TLS Connection (optional)
 	//  - BFE Connection (PROXY, optional)
 	//  - TCP Connection
+	// 获取底层的bfe conn，给定的net.Conn可能是这样的:
+	// - TLS连接(可选)
+	// - BFE连接(PROXY，可选)
+	// - TCP连接
 	if tc, ok := conn.(*bfe_tls.Conn); ok {
 		conn = tc.GetNetConn()
 	}

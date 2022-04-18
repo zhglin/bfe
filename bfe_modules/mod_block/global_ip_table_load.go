@@ -24,6 +24,7 @@ import (
 )
 
 // GlobalIPTableLoad loads global ip table.
+// 加载全局IP表。
 func GlobalIPTableLoad(path string) (*ipdict.IPItems, error) {
 	var items *ipdict.IPItems
 	var err error

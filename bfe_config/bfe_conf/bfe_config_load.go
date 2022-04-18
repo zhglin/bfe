@@ -19,10 +19,10 @@ import (
 )
 
 type BfeConfig struct {
-	// basic server config
+	// basic server config 基本的服务器配置
 	Server ConfigBasic
 
-	// basic https config
+	// basic https config https的基本配置
 	HttpsBasic ConfigHttpsBasic
 
 	// session cache config
@@ -32,6 +32,7 @@ type BfeConfig struct {
 	SessionTicket ConfigSessionTicket
 }
 
+// SetDefaultConf 设置默认配置
 func SetDefaultConf(conf *BfeConfig) {
 	conf.Server.SetDefaultConf()
 	conf.HttpsBasic.SetDefaultConf()
@@ -41,22 +42,27 @@ func SetDefaultConf(conf *BfeConfig) {
 
 // BfeConfigLoad loads config from config file.
 // NOTICE: some value will be modified when not set or out of range!!
+// BfeConfigLoad从配置文件中加载配置。
+// 注意:某些值在未设置或超出范围时将被修改!!
 func BfeConfigLoad(filePath string, confRoot string) (BfeConfig, error) {
 	var cfg BfeConfig
 	var err error
 
+	// 设置默认的配置项
 	SetDefaultConf(&cfg)
 
-	// read config from file
+	// read config from file 从文件中读取配置
 	err = gcfg.ReadFileInto(&cfg, filePath)
 	if err != nil {
 		return cfg, err
 	}
 
+	// 校验server配置
 	if err = cfg.Server.Check(confRoot); err != nil {
 		return cfg, err
 	}
 
+	// 校验httpsServer配置
 	if err = cfg.HttpsBasic.Check(confRoot); err != nil {
 		return cfg, err
 	}

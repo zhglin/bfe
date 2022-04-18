@@ -19,16 +19,19 @@ import (
 	"fmt"
 )
 
+// ActionFile 配置文件映射
 type ActionFile struct {
 	Cmd    *string  // command of action
 	Params []string // params of action
 }
 
+// Action 内部用配置
 type Action struct {
 	Cmd    string   // command of action
 	Params []string // params of action
 }
 
+// ActionFileCheck Action内容校验
 func ActionFileCheck(conf *ActionFile) error {
 	var paramsLenCheck int
 
@@ -38,6 +41,7 @@ func ActionFileCheck(conf *ActionFile) error {
 	}
 
 	// validate command, and get how many params should exist for each command
+	// 验证命令，并获取每个命令应该存在多少参数
 	switch *conf.Cmd {
 	case "CLOSE":
 		paramsLenCheck = 0
@@ -52,6 +56,7 @@ func ActionFileCheck(conf *ActionFile) error {
 		return errors.New("no Params")
 	}
 
+	// close allow不能有params配置
 	if paramsLenCheck != -1 {
 		paramsLen := len(conf.Params)
 		if paramsLenCheck != paramsLen {
@@ -62,6 +67,7 @@ func ActionFileCheck(conf *ActionFile) error {
 	return nil
 }
 
+// ActionFile转换到Action
 func actionConvert(actionFile ActionFile) Action {
 	action := Action{}
 	action.Cmd = *actionFile.Cmd

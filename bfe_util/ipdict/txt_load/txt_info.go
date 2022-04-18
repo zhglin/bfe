@@ -26,6 +26,7 @@ import (
 	"github.com/bfenetworks/bfe/bfe_util/json"
 )
 
+// MetaInfo ip数量信息
 type MetaInfo struct {
 	Version     string
 	SingleIPNum int // single IP num
@@ -44,8 +45,16 @@ type MetaInfo struct {
 *   - (*MetaInfo, nil), if success ,return file metaInfo
 *   - (nil error), if failed
  */
+// -获取文件元信息。
+// 从第一行获取文件的meta信息，如果失败，得到实际的IPNums
+// 参数:
+// - path:文件路径
+// *返回:
+// - (*MetaInfo, nil)，如果成功，返回文件MetaInfo
+// - (nil error)，如果失败
 func getFileInfo(path string) (*MetaInfo, error) {
 	// get meta info from comment(first line)
+	// 从注释中获取元信息(第一行)
 	if metaInfo, err := getCommentFileInfo(path); err == nil {
 		return metaInfo, nil
 	}
@@ -117,12 +126,14 @@ func getActualFileInfo(path string) (*MetaInfo, error) {
 
 	singleIPCounter := 0
 	pairIPCounter := 0
-	// scan the file line by line
+	// scan the file line by line 逐行扫描文件
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		// Remove all leading and trailing spaces and tabs
+		// 删除所有开头和结尾的空格和制表符
 		line := strings.Trim(scanner.Text(), " \t")
 		//Line begins with "#" is considered as a comment
+		// 以“#”开头的行被视为注释
 		if strings.HasPrefix(line, "#") || len(line) == 0 {
 			continue
 		}
