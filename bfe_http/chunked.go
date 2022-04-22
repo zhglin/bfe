@@ -40,6 +40,9 @@ var ErrLineTooLong = errors.New("header line too long")
 //
 // newChunkedReader is not needed by normal applications. The http package
 // automatically decodes chunking when reading response bodies.
+// newChunkedReader返回一个新的chunkedReader，它将从r读取的数据转换成HTTP的chunked格式，然后返回。
+// chunkedReader读取最后一个0长度块时返回io.EOF。
+// 一般应用程序不需要newChunkedReader。http包在读取响应体时自动解码分块。
 func newChunkedReader(r io.Reader) io.Reader {
 	br, ok := r.(*bfe_bufio.Reader)
 	if !ok {

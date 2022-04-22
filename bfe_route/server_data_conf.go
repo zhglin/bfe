@@ -47,15 +47,16 @@ func newServerDataConf() *ServerDataConf {
 }
 
 // LoadServerDataConf loads ServerDataConf config.
+// 加载ServerDataConf配置。
 func LoadServerDataConf(hostFile, vipFile, routeFile, clusterConfFile string) (*ServerDataConf, error) {
 	s := newServerDataConf()
 
-	// load host table
+	// load host table 产品线域名表配置文件。
 	if err := s.hostTableLoad(hostFile, vipFile, routeFile); err != nil {
 		return nil, fmt.Errorf("hostTableLoad Error %s", err)
 	}
 
-	// load cluster table
+	// load cluster table 实例级别负载均衡配置文件路径
 	if err := s.clusterTableLoad(clusterConfFile); err != nil {
 		return nil, fmt.Errorf("clusterTableLoad Error %s", err)
 	}
@@ -69,22 +70,23 @@ func LoadServerDataConf(hostFile, vipFile, routeFile, clusterConfFile string) (*
 }
 
 // hostTableLoad loads all data for host table from file.
+// 从文件中加载主机表的所有数据。
 func (s *ServerDataConf) hostTableLoad(hostFile, vipFile, routeFile string) error {
-	// load host rule from file
+	// load host rule from file 加载主机规则
 	hostConf, err := host_rule_conf.HostRuleConfLoad(hostFile)
 	if err != nil {
 		log.Logger.Error("hostTableLoad():err in HostRuleConfLoad():%s", err.Error())
 		return err
 	}
 
-	// load vip rule from file
+	// load vip rule from file 产品线的VIP列表。
 	vipConf, err := vip_rule_conf.VipRuleConfLoad(vipFile)
 	if err != nil {
 		log.Logger.Error("vipTableLoad():err in VipRuleConfLoad():%s", err.Error())
 		return err
 	}
 
-	// load route conf from file
+	// load route conf from file 分流配置文件。
 	routeConf, err := route_rule_conf.RouteConfLoad(routeFile)
 	if err != nil {
 		log.Logger.Error("hostTableLoad():err in RouteConfLoad():%s", err.Error())

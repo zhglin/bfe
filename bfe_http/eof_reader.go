@@ -27,6 +27,8 @@ import (
 // EofReader is a non-nil io.ReadCloser that always returns EOF.
 // It embeds a *strings.Reader so it still has a WriteTo method
 // and io.Copy won't need a buffer.
+// EofReader是一个非空的io。总是返回EOF的ReadCloser。
+// 它嵌入一个*strings.Reader，所以它仍然有WriteTo方法和io.Copy不需要缓冲区。
 var EofReader = &struct {
 	*strings.Reader
 	io.Closer

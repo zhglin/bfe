@@ -30,9 +30,9 @@ import (
 )
 
 const (
-	treeMatchExact    = iota // index to exact match tree
-	treeMatchWildcard        // index to wildcard match tree
-	treeMatchTypeNum         // index to exact match tree
+	treeMatchExact    = iota // index to exact match tree     精确匹配树的索引
+	treeMatchWildcard        // index to wildcard match tree  通配符匹配树的索引
+	treeMatchTypeNum         // index to exact match tree     种类数量
 )
 
 type hostTrees [treeMatchTypeNum]*radix.Tree // trees for host match

@@ -42,7 +42,7 @@ type BasicRouteRule struct {
 
 // AdvancedRouteRule is composed by a condition and cluster to serve
 type AdvancedRouteRule struct {
-	Cond        condition.Condition
+	Cond        condition.Condition // 条件表达式
 	ClusterName string
 }
 
@@ -70,16 +70,18 @@ type ProductAdvancedRouteRule map[string]AdvancedRouteRules
 type ProductAdvancedRouteRuleFile map[string]AdvancedRouteRuleFiles
 type ProductBasicRouteRuleFile map[string]BasicRouteRuleFiles
 
+// RouteTableFile 配置文件映射
 type RouteTableFile struct {
 	Version *string // version of the config
 
-	// product => rules (basic rule)
+	// product => rules (basic rule)	基础配置
 	BasicRule *ProductBasicRouteRuleFile
 
-	// product => rules (advanced rule)
+	// product => rules (advanced rule) 高级配置
 	ProductRule *ProductAdvancedRouteRuleFile
 }
 
+// RouteTableConf 内部配置
 type RouteTableConf struct {
 	Version         string // version of the config
 	BasicRuleMap    ProductBasicRouteRule
@@ -119,6 +121,7 @@ func Convert(fileConf *RouteTableFile) (*RouteTableConf, error) {
 	return conf, nil
 }
 
+// 高级配置
 func convertAdvancedRule(ProductRule *ProductAdvancedRouteRuleFile) (ProductAdvancedRouteRule, error) {
 	productRules := make(ProductAdvancedRouteRule)
 	if ProductRule == nil {
@@ -138,7 +141,7 @@ func convertAdvancedRule(ProductRule *ProductAdvancedRouteRuleFile) (ProductAdva
 			}
 
 			rules[i].ClusterName = *ruleFile.ClusterName
-			cond, err := condition.Build(*ruleFile.Cond)
+			cond, err := condition.Build(*ruleFile.Cond) // 构建条件表达式
 			if err != nil {
 				return nil, fmt.Errorf("error build [%s] [%s]", *ruleFile.Cond, err)
 			}
@@ -150,6 +153,7 @@ func convertAdvancedRule(ProductRule *ProductAdvancedRouteRuleFile) (ProductAdva
 	return productRules, nil
 }
 
+// 基础配置转换
 func convertBasicRule(ProductRule *ProductBasicRouteRuleFile) (ProductBasicRouteRule, ProductBasicRouteTree, error) {
 	productRuleMap := make(ProductBasicRouteRule)
 	productRuleTree := make(ProductBasicRouteTree)
@@ -172,12 +176,14 @@ func convertBasicRule(ProductRule *ProductBasicRouteRuleFile) (ProductBasicRoute
 				return nil, nil, fmt.Errorf("no hostname or path in basic route rule for (%s, %d)", product, i)
 			}
 
+			// 校验hostName
 			for _, host := range ruleFile.Hostname {
 				if err := checkHostInBasicRule(host); err != nil {
 					return nil, nil, fmt.Errorf("host[%s] is invalid for (%s, %d), err: %s ", host, product, i, err.Error())
 				}
 			}
 
+			// 校验path
 			for _, path := range ruleFile.Path {
 				if err := checkPathInBasicRule(path); err != nil {
 					return nil, nil, fmt.Errorf("path[%s] is invalid (%s, %d), err: %s ", path, product, i, err.Error())
@@ -201,6 +207,7 @@ func convertBasicRule(ProductRule *ProductBasicRouteRuleFile) (ProductBasicRoute
 
 // checkHostInBasicRule verify host's wildcard pattern
 // only one * is allowed, eg: *.foo.com
+// 验证主机的通配符模式，只允许一个*，例如:*.foo.com
 func checkHostInBasicRule(host string) error {
 	if host == "" {
 		return errors.New("hostname is nil or empty")
@@ -211,7 +218,7 @@ func checkHostInBasicRule(host string) error {
 	}
 
 	if strings.Count(host, "*") == 1 {
-		if host != "*" && !strings.HasPrefix(host, "*.") {
+		if host != "*" && !strings.HasPrefix(host, "*.") { // 非前缀开头
 			return errors.New("format error in wildcard host")
 		}
 	}
@@ -221,6 +228,7 @@ func checkHostInBasicRule(host string) error {
 
 // checkPathInBasicRule verify path's wildcard pattern
 // only one * at end of path is allowed
+// 验证路径的通配符模式，只允许在路径末尾有一个*
 func checkPathInBasicRule(path string) error {
 	if path == "" {
 		return errors.New("path is nil or empty")
@@ -262,6 +270,7 @@ func (conf *RouteTableConf) LoadAndCheck(filename string) (string, error) {
 }
 
 // RouteConfLoad loads config of route table from file.
+// 从文件中加载路由表的配置。
 func RouteConfLoad(filename string) (*RouteTableConf, error) {
 	var conf RouteTableConf
 	if _, err := conf.LoadAndCheck(filename); err != nil {

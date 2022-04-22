@@ -89,7 +89,9 @@ var reqWriteExcludeHeader = map[string]bool{
 
 // A Request represents an HTTP request received by a server
 // or to be sent by a client.
+// 请求表示一个HTTP请求，由服务器接收或由客户端发送。
 type Request struct {
+	// http method
 	Method string // GET, POST, PUT, etc.
 
 	// URL is created from the URI supplied on the Request-Line
@@ -97,10 +99,13 @@ type Request struct {
 	//
 	// For most requests, fields other than Path and RawQuery
 	// will be empty. (See RFC 2616, Section 5.1.2)
+	// URL是从RequestURI中存储的Request-Line上提供的URI创建的。
+	// 对于大多数请求，除Path和RawQuery以外的字段将是空的。(参见RFC 2616，章节5.1.2)
 	URL *url.URL
 
 	// The protocol version for incoming requests.
 	// Outgoing requests always use HTTP/1.1.
+	// 接收请求的协议版本。发送请求总是使用HTTP/1.1。
 	Proto      string // "HTTP/1.0"
 	ProtoMajor int    // 1
 	ProtoMinor int    // 0
@@ -127,7 +132,8 @@ type Request struct {
 	Header Header
 
 	// a headerKeys represents keys of header in original order
-	HeaderKeys textproto.MIMEKeys
+	// 表示按原始顺序排列的head头
+	HeaderKeys textproto.MIMEKeys // 额外的
 
 	// Body is the request's body.
 	//
@@ -163,6 +169,9 @@ type Request struct {
 	// Per RFC 2616, this is either the value of the Host: header
 	// or the host name given in the URL itself.
 	// It may be of the form "host:port".
+	// 查找URL的主机。
+	// 根据RFC 2616，这要么是Host:头的值，要么是URL本身给出的主机名。
+	// 它的形式可能是"host:port"。
 	Host string
 
 	// Form contains the parsed form data, including both the URL
@@ -203,6 +212,8 @@ type Request struct {
 	// Request-Line (RFC 2616, Section 5.1) as sent by the client
 	// to a server. Usually the URL field should be used instead.
 	// It is an error to set this field in an HTTP client request.
+	// RequestURI是客户端发送给服务器的Request-Line (RFC 2616, Section 5.1)中未修改的Request-URI。
+	// 通常应该使用URL字段。在HTTP客户端请求中设置此字段是错误的。
 	RequestURI string
 
 	// TLS allows HTTP servers and other software to record
@@ -216,19 +227,23 @@ type Request struct {
 
 	// State allows HTTP server and other software to record
 	// information about the request. This filed may be not filled.
+	// 允许HTTP服务器和其他软件记录请求的信息。此栏可能没有填写。
 	State *RequestState
 }
 
 type RequestState struct {
 	// SerialNumber identify Nth request on one connection
 	// this field of first request is 1, second is 2, and so on
+	// SerialNumber标识一个连接上的第n个请求，第一个请求的字段是1，第二个是2，以此类推
 	SerialNumber uint32
 
 	// Conn is the connection from which request arrived
+	// Conn是请求到达的连接
 	Conn net.Conn
 
 	// StartTime is the time when the first byte of request header was
 	// received. StartTime may be approximate.
+	// StartTime是接收到请求头的第一个字节的时间。StartTime可能是一个近似值。
 	StartTime time.Time
 
 	// ConnectBackendStart is the time when start get a connection
@@ -238,6 +253,7 @@ type RequestState struct {
 	ConnectBackendEnd time.Time
 
 	// HeaderSize is the size of the request header.
+	// 请求头的大小。
 	HeaderSize uint32
 
 	// BodySize is the size of request body.
@@ -246,6 +262,7 @@ type RequestState struct {
 
 // ProtoAtLeast reports whether the HTTP protocol used
 // in the request is at least major.minor.
+// 报告请求中使用的HTTP协议是否至少为major.minor。
 func (r *Request) ProtoAtLeast(major, minor int) bool {
 	return r.ProtoMajor > major ||
 		r.ProtoMajor == major && r.ProtoMinor >= minor
@@ -473,6 +490,8 @@ func (req *Request) write(w io.Writer, usingProxy bool, extraHeaders Header) err
 
 // ParseHTTPVersion parses a HTTP version string.
 // "HTTP/1.0" returns (1, 0, true).
+// ParseHTTPVersion解析HTTP版本字符串。
+// "HTTP/1.0"返回(1,0,true)。
 func ParseHTTPVersion(vers string) (major, minor int, ok bool) {
 	const Big = 1000000 // arbitrary upper bound
 	switch vers {
@@ -481,13 +500,16 @@ func ParseHTTPVersion(vers string) (major, minor int, ok bool) {
 	case "HTTP/1.0":
 		return 1, 0, true
 	}
+	// 非HTTP/开头
 	if !strings.HasPrefix(vers, "HTTP/") {
 		return 0, 0, false
 	}
+	// 不含有.
 	dot := strings.Index(vers, ".")
 	if dot < 0 {
 		return 0, 0, false
 	}
+	// 非数字 || 数字不在范围
 	major, err := strconv.Atoi(vers[5:dot])
 	if err != nil || major < 0 || major > Big {
 		return 0, 0, false
@@ -578,6 +600,7 @@ func (r *Request) SetBasicAuth(username, password string) {
 }
 
 // parseRequestLine parses "GET /foo HTTP/1.1" into its three parts.
+// 解析http第一行 "GET /foo HTTP/1.1"
 func parseRequestLine(line string) (method, requestURI, proto string, ok bool) {
 	s1 := strings.Index(line, " ")
 	s2 := strings.Index(line[s1+1:], " ")
@@ -590,6 +613,7 @@ func parseRequestLine(line string) (method, requestURI, proto string, ok bool) {
 
 var textprotoReaderCache sync.Pool
 
+// 创建协议编码解析对象
 func newTextprotoReader(br *bfe_bufio.Reader) *textproto.Reader {
 	r := textprotoReaderCache.Get()
 	if r != nil {
@@ -607,20 +631,27 @@ func putTextprotoReader(r *textproto.Reader) {
 }
 
 // ReadRequest reads and parses a request from b.
+// 读取和解析来自b的请求。
+// 虽然HTTP/HTTPS/HTTP2/SPDY/使用不同方式传输数据，但BFE从协议层接收到HTTP请求后，在上层都转化为相同的内部请求类型(bfe_http.Request)，并执行统一的逻辑处理。
+// BFE的HTTP/HTTP2/SPDY/WebSocket/TLS等网络协议基于Go语言官方开源协议库。
+// 为更好满足反向代理的需求场景，在BFE中进行了二次定制开发，包括性能优化、防攻击机制完善、兼容性改进、增加探针等。
 func ReadRequest(b *bfe_bufio.Reader, maxUriBytes int) (req *Request, err error) {
 	totalRead := b.TotalRead
 
+	// 协议编码格式
 	tp := newTextprotoReader(b)
 	req = new(Request)
 	req.State = new(RequestState)
 
 	// First line: GET /index.html HTTP/1.0
+	// 读取http第一行
 	var s string
 	if s, err = tp.ReadLine(); err != nil {
 		return nil, err
 	}
 
 	// mark start as time of reading out first line
+	// 标记开始作为读出第一行的时间
 	req.State.StartTime = time.Now()
 
 	defer func() {
@@ -630,6 +661,7 @@ func ReadRequest(b *bfe_bufio.Reader, maxUriBytes int) (req *Request, err error)
 		}
 	}()
 
+	// 解析第一行数据，写入method,requestUri, proto
 	var ok bool
 	req.Method, req.RequestURI, req.Proto, ok = parseRequestLine(s)
 	if !ok {
@@ -637,10 +669,12 @@ func ReadRequest(b *bfe_bufio.Reader, maxUriBytes int) (req *Request, err error)
 	}
 	rawurl := req.RequestURI
 
+	// uri超过长度
 	if len(rawurl) > maxUriBytes {
 		return nil, fmt.Errorf("exceed maxUriBytes:%d", len(rawurl))
 	}
 
+	// 解析http版本
 	if req.ProtoMajor, req.ProtoMinor, ok = ParseHTTPVersion(req.Proto); !ok {
 		return nil, &badStringError{"malformed HTTP version", req.Proto}
 	}
@@ -654,21 +688,29 @@ func ReadRequest(b *bfe_bufio.Reader, maxUriBytes int) (req *Request, err error)
 	// that starts with a slash. It can be parsed with the regular URL parser,
 	// and the path will end up in req.URL.Path, where it needs to be in order for
 	// RPC to work.
+	// CONNECT请求使用两种不同的方式，都不使用完整的URL:
+	// 标准的用法是通过HTTP代理隧道HTTPS。
+	// 它看起来像“CONNECT www.google.com:443 HTTP/1.1”，参数只是URL的权限部分。这个信息应该放在req.URL.Host中。
+	// net/rpc包也使用CONNECT，但参数是一个以斜杠开始的路径。它可以用普通的URL解析器解析，路径将以req.URL.Path结束。为了让RPC工作，它需要在这里。
 	justAuthority := req.Method == MethodConnect && !strings.HasPrefix(rawurl, "/")
 	if justAuthority {
 		rawurl = "http://" + rawurl
 	}
 
+	// 解析出来URL
 	if req.URL, err = url.ParseRequestURI(rawurl); err != nil {
 		return nil, err
 	}
 
+	// 代理认证
 	if justAuthority {
 		// Strip the bogus "http://" back off.
+		// 把假的“http://”去掉。
 		req.URL.Scheme = ""
 	}
 
 	// Subsequent lines: Key: value.
+	// 后续行:Key:Value。读取head头
 	mimeHeader, headerKeys, err := tp.ReadMIMEHeaderAndKeys()
 	if err != nil {
 		return nil, err
@@ -689,6 +731,7 @@ func ReadRequest(b *bfe_bufio.Reader, maxUriBytes int) (req *Request, err error)
 	}
 	delete(req.Header, "Host")
 
+	// 修改cacheControl
 	fixPragmaCacheControl(req.Header)
 
 	// TODO: Parse specific header values:
@@ -717,8 +760,10 @@ func ReadRequest(b *bfe_bufio.Reader, maxUriBytes int) (req *Request, err error)
 	//	Via
 	//	Warning
 
+	// 记录请求头的长度
 	req.State.HeaderSize = uint32(b.TotalRead - totalRead)
 
+	// 解析转换http报文
 	err = readTransfer(req, b)
 	if err != nil {
 		return nil, err

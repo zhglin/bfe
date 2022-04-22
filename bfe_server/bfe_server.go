@@ -427,6 +427,7 @@ func (srv *BfeServer) CheckGracefulShutdown() bool {
 	}
 }
 
+// GetServerConf 返回配置
 func (srv *BfeServer) GetServerConf() *bfe_route.ServerDataConf {
 	srv.confLock.RLock()
 	sf := srv.ServerConf

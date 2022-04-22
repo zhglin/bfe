@@ -68,6 +68,7 @@ type switchWriter struct {
 	io.Writer
 }
 
+// 锁
 type atomicBool int32
 
 func (b *atomicBool) isSet() bool { return atomic.LoadInt32((*int32)(b)) != 0 }
@@ -75,8 +76,11 @@ func (b *atomicBool) setTrue()    { atomic.StoreInt32((*int32)(b), 1) }
 func (b *atomicBool) setFalse()   { atomic.StoreInt32((*int32)(b), 0) }
 
 // A response represents the server side of an HTTP response.
+// 表示HTTP响应的服务器端。
 type response struct {
-	conn          *conn
+	// 链接
+	conn *conn
+	// 此响应的请求
 	req           *bfe_http.Request // request for this response
 	wroteHeader   bool              // reply header has been (logically) written
 	wroteContinue bool              // 100 Continue response was written
@@ -88,9 +92,13 @@ type response struct {
 	// These two fields together synchronize the body reader
 	// (the expectContinueReader, which wants to write 100 Continue)
 	// against the main writer.
+	// canWriteContinue是一个布尔值，以原子int32的形式访问，表示是否可以向连接写入100 Continue头。
+	// writeContinueMu必须在写入头文件时被保存。
+	// 这两个字段一起同步主体读取器(希望写入100 Continue的expectContinueReader)和主写入器。
 	canWriteContinue atomicBool
 	writeContinueMu  sync.Mutex
 
+	// 以块的形式将输出缓冲到chunkWriter
 	w  *bfe_bufio.Writer // buffers output in chunks to chunkWriter
 	cw chunkWriter
 	sw *switchWriter // of the bufio.Writer, for return to putBufioWriter
@@ -99,6 +107,8 @@ type response struct {
 	// which may be retained and mutated even after WriteHeader.
 	// handlerHeader is copied into cw.header at WriteHeader
 	// time, and privately mutated thereafter.
+	// handlerHeader是Handlers可以访问的头文件，即使在WriteHeader之后也可以保留和修改。
+	// handlerHeader在WriteHeader时间被复制到cw.header，然后私有地进行修改。
 	handlerHeader bfe_http.Header
 	calledHeader  bool // handler accessed handlerHeader via Header
 
@@ -130,6 +140,7 @@ type response struct {
 	clenBuf [10]byte
 }
 
+// 创建response
 func newResponse(c *conn, req *bfe_http.Request) *response {
 	w := &response{
 		conn:          c,
@@ -391,6 +402,7 @@ func (w *response) Flush() error {
 	return nil
 }
 
+//Expect 100-continue异常的响应
 func (w *response) sendExpectationFailed() {
 	// TODO(bradfitz): let ServeHTTP handlers handle
 	// requests with non-standard expectation[s]? Seems
@@ -404,6 +416,7 @@ func (w *response) sendExpectationFailed() {
 	// Expect field that includes an expectation-
 	// extension that it does not support, it MUST
 	// respond with a 417 (Expectation Failed) status."
+	// 现在我们只遵循RFC 2616 14.20，它说:“如果服务器接收到一个包含Expect字段的请求，该字段包含一个它不支持的Expect - extension，它必须以417 (Expect Failed)状态响应。”
 	w.Header().Set("Connection", "close")
 	w.WriteHeader(bfe_http.StatusExpectationFailed)
 	w.finishRequest()

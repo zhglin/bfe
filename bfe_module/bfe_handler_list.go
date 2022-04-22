@@ -86,7 +86,7 @@ LOOP:
 	for e := hl.handlers.Front(); e != nil; e = e.Next() {
 		switch filter := e.Value.(type) {
 		case AcceptFilter:
-			retVal = filter.FilterAccept(session)
+			retVal = filter.FilterAccept(session) // 依次执行所有的回调，非BfeHandlerGoOn就退出
 			if retVal != BfeHandlerGoOn {
 				break LOOP
 			}
@@ -164,6 +164,7 @@ LOOP:
 }
 
 // FilterFinish filters finished session with HandlerList.
+// 使用HandlerList过滤完成的会话。
 func (hl *HandlerList) FilterFinish(session *bfe_basic.Session) int {
 	retVal := BfeHandlerGoOn
 
@@ -185,6 +186,7 @@ LOOP:
 }
 
 // AddAcceptFilter adds accept filter to handler list.
+// 添加accept处理函数
 func (hl *HandlerList) AddAcceptFilter(f interface{}) error {
 	callback, ok := f.(func(session *bfe_basic.Session) int)
 	if !ok {

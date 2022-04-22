@@ -31,6 +31,7 @@ import (
 	"github.com/baidu/go-lib/web-monitor/web_monitor"
 )
 
+// ModuleAccess 以指定格式记录请求日志和会话日志。
 type ModuleAccess struct {
 	name   string
 	logger log4go.Logger
@@ -50,6 +51,7 @@ func (m *ModuleAccess) Name() string {
 	return m.name
 }
 
+// ParseConfig 解析配置模板
 func (m *ModuleAccess) ParseConfig(conf *ConfModAccess) error {
 	var err error
 
@@ -66,11 +68,13 @@ func (m *ModuleAccess) ParseConfig(conf *ConfModAccess) error {
 	return nil
 }
 
+// Init 初始化模块
 func (m *ModuleAccess) Init(cbs *bfe_module.BfeCallbacks, whs *web_monitor.WebHandlers,
 	cr string) error {
 	var err error
 	var conf *ConfModAccess
 
+	// 加载配置
 	confPath := bfe_module.ModConfPath(cr, m.name)
 	if conf, err = ConfLoad(confPath, cr); err != nil {
 		return fmt.Errorf("%s: cond load err %s", m.name, err.Error())
@@ -82,26 +86,31 @@ func (m *ModuleAccess) Init(cbs *bfe_module.BfeCallbacks, whs *web_monitor.WebHa
 func (m *ModuleAccess) init(conf *ConfModAccess, cbs *bfe_module.BfeCallbacks, whs *web_monitor.WebHandlers) error {
 	var err error
 
+	// 解析成m.reqFmts, m.sessionFmts
 	if err = m.ParseConfig(conf); err != nil {
 		return fmt.Errorf("%s.Init(): ParseConfig %s", m.name, err.Error())
 	}
 
 	m.conf = conf
 
+	// 校验
 	if err = m.CheckLogFormat(); err != nil {
 		return fmt.Errorf("%s.Init(): CheckLogFormat %s", m.name, err.Error())
 	}
 
+	// 创建log组件
 	m.logger, err = access_log.LoggerInit(conf.Log)
 	if err != nil {
 		return fmt.Errorf("%s.Init(): create logger", m.name)
 	}
 
+	// 请求处理成功的回调
 	err = cbs.AddFilter(bfe_module.HandleRequestFinish, m.requestLogHandler)
 	if err != nil {
 		return fmt.Errorf("%s.Init(): AddFilter(m. requestLogHandler): %s", m.name, err.Error())
 	}
 
+	// 会话成功的回调
 	err = cbs.AddFilter(bfe_module.HandleFinish, m.sessionLogHandler)
 	if err != nil {
 		return fmt.Errorf("%s.Init(): AddFilter(m.sessionLogHandler): %s", m.name, err.Error())
@@ -110,6 +119,7 @@ func (m *ModuleAccess) init(conf *ConfModAccess, cbs *bfe_module.BfeCallbacks, w
 	return nil
 }
 
+// CheckLogFormat 校验m.reqFmts m.sessionFmts
 func (m *ModuleAccess) CheckLogFormat() error {
 	for _, item := range m.reqFmts {
 		err := checkLogFmt(item, Request)
@@ -152,18 +162,20 @@ func (m *ModuleAccess) requestLogHandler(req *bfe_basic.Request, res *bfe_http.R
 	return bfe_module.BfeHandlerGoOn
 }
 
+// 记录会话成功的日志
 func (m *ModuleAccess) sessionLogHandler(session *bfe_basic.Session) int {
 	byteStr := bytes.NewBuffer(nil)
 
 	for _, item := range m.sessionFmts {
 		switch item.Type {
-		case FormatString:
+		case FormatString: // string类型直接记录
 			byteStr.WriteString(item.Key)
 		case FormatTime:
 			onLogFmtTime(m, byteStr)
 		default:
 			handler, found := fmtHandlerTable[item.Type]
 			if found {
+				// 类型转换
 				h := handler.(func(*ModuleAccess, *LogFmtItem, *bytes.Buffer,
 					*bfe_basic.Session) error)
 				h(m, &item, byteStr, session)

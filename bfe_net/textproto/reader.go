@@ -33,9 +33,11 @@ import (
 
 // A Reader implements convenience methods for reading requests
 // or responses from a text protocol network connection.
+// Reader实现了从文本协议网络连接读取请求或响应的方便方法。
 type Reader struct {
 	R   *bfe_bufio.Reader
 	dot *dotReader
+	// readContinuedLineSlice的可重用缓冲区
 	buf []byte // a re-usable buffer for readContinuedLineSlice
 }
 
@@ -44,6 +46,8 @@ type Reader struct {
 // To avoid denial of service attacks, the provided bufio.Reader
 // should be reading from an io.LimitReader or similar Reader to bound
 // the size of responses.
+// NewReader返回一个从r读取的新Reader。
+// 为了避免拒绝服务攻击，提供的bufio.Reader应该从io中阅读或类似的Reader来限制响应的大小。
 func NewReader(r *bfe_bufio.Reader) *Reader {
 	commonHeaderOnce.Do(initCommonHeader)
 	return &Reader{R: r}
@@ -51,6 +55,7 @@ func NewReader(r *bfe_bufio.Reader) *Reader {
 
 // ReadLine reads a single line from r,
 // eliding the final \n or \r\n from the returned string.
+// ReadLine从r中读取一行，从返回的字符串中删除最后的\n或\r\n。
 func (r *Reader) ReadLine() (string, error) {
 	line, err := r.readLineSlice()
 	return string(line), err
@@ -67,6 +72,8 @@ func (r *Reader) ReadLineBytes() ([]byte, error) {
 	return line, err
 }
 
+// 读取一行
+// r.R.ReadLine() 返回的可能不是一行，所以for循环一直读。
 func (r *Reader) readLineSlice() ([]byte, error) {
 	r.closeDot()
 	var line []byte
@@ -75,7 +82,9 @@ func (r *Reader) readLineSlice() ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
+		// 没有err,说明是有数据的，!more说明是完成的行
 		// Avoid the copy if the first call produced a full line.
+		// 如果第一次调用产生了完整的行，则避免复制。
 		if line == nil && !more {
 			return l, nil
 		}
@@ -113,11 +122,14 @@ func (r *Reader) ReadContinuedLine() (string, error) {
 
 // trim returns s with leading and trailing spaces and tabs removed.
 // It does not assume Unicode or UTF-8.
+// trim返回s，去掉了开头和结尾的空格和制表符。
 func trim(s []byte) []byte {
+	// 开头非空白符的位置
 	i := 0
 	for i < len(s) && (s[i] == ' ' || s[i] == '\t') {
 		i++
 	}
+	// 结尾非空白符的位置
 	n := len(s)
 	for n > i && (s[n-1] == ' ' || s[n-1] == '\t') {
 		n--
@@ -137,13 +149,14 @@ func (r *Reader) ReadContinuedLineBytes() ([]byte, error) {
 	return line, err
 }
 
+// 按行读取head内容
 func (r *Reader) readContinuedLineSlice() ([]byte, error) {
 	// Read the first line.
 	line, err := r.readLineSlice()
 	if err != nil {
 		return nil, err
 	}
-	if len(line) == 0 { // blank line - no continuation
+	if len(line) == 0 { // blank line - no continuation 空行-没有延续
 		return line, nil
 	}
 
@@ -151,19 +164,26 @@ func (r *Reader) readContinuedLineSlice() ([]byte, error) {
 	// and it starts with an ASCII letter (the next header key), or a blank
 	// line, so we can avoid copying that buffered data around in memory
 	// and skipping over non-existent whitespace.
+	// 乐观地假设我们已经开始缓冲下一行，并且它以一个ASCII字母(下一个标题键)或空白行开始，这样我们就可以避免在内存中复制缓冲的数据并跳过不存在的空白。
 	if r.R.Buffered() > 1 {
+		// 开始缓冲下一行
 		peek, _ := r.R.Peek(2)
+		// 以一个ASCII字母(下一个标题键)或"\r\n"开始
 		if len(peek) > 0 && (isASCIILetter(peek[0]) || peek[0] == '\n') ||
 			len(peek) == 2 && peek[0] == '\r' && peek[1] == '\n' {
+			// 退出 说明下一行是独立的head
 			return trim(line), nil
 		}
 	}
 
 	// ReadByte or the next readLineSlice will flush the read buffer;
 	// copy the slice into buf.
+	// ReadByte或下一个readLineSlice将刷新读取缓冲区;将切片复制到buf中。
 	r.buf = append(r.buf[:0], trim(line)...)
 
 	// Read continuation lines.
+	// 跳过了开头的空白符，接着读取一行
+	// 空白开头的行 作为值附加到上一行后面
 	for r.skipSpace() > 0 {
 		line, err := r.readLineSlice()
 		if err != nil {
@@ -176,6 +196,7 @@ func (r *Reader) readContinuedLineSlice() ([]byte, error) {
 }
 
 // skipSpace skips R over all spaces and returns the number of bytes skipped.
+// 跳过空字符以及"\t"(水平制表符,八个空格)
 func (r *Reader) skipSpace() int {
 	n := 0
 	for {
@@ -185,7 +206,7 @@ func (r *Reader) skipSpace() int {
 			break
 		}
 		if c != ' ' && c != '\t' {
-			r.R.UnreadByte()
+			r.R.UnreadByte() // 把读取的字符重新放入缓冲区
 			break
 		}
 		n++
@@ -404,6 +425,7 @@ func (d *dotReader) Read(b []byte) (n int, err error) {
 
 // closeDot drains the current DotReader if any,
 // making sure that it reads until the ending dot line.
+// closeDot读取当前的DotReader(如果有的话)，确保它读取到结束的点行。
 func (r *Reader) closeDot() {
 	if r.dot == nil {
 		return
@@ -412,6 +434,7 @@ func (r *Reader) closeDot() {
 	for r.dot != nil {
 		// When Read reaches EOF or an error,
 		// it will set r.dot == nil.
+		// 当Read到达EOF或一个错误时，它将设置r.dot == nil。
 		r.dot.Read(buf)
 	}
 }
@@ -480,42 +503,51 @@ func (r *Reader) ReadMIMEHeader() (MIMEHeader, error) {
 	return header, err
 }
 
+// ReadMIMEHeaderAndKeys 读取head头
 func (r *Reader) ReadMIMEHeaderAndKeys() (MIMEHeader, MIMEKeys, error) {
 	// Avoid lots of small slice allocations later by allocating one
 	// large one ahead of time which we'll cut up into smaller
 	// slices. If this isn't big enough later, we allocate small ones.
+	// 通过提前分配一个大的分片来避免后面的小分片分配。如果这个之后不够大，我们就分配小的。
 	var strs []string
+	// 获取"\n"数量
 	hint := r.upcomingHeaderNewlines()
 	if hint > 0 {
 		// Note: Avoid additional allocations caused by header
 		// modification from application layer
+		// 注意:避免由于应用程序修改头而导致的额外分配
 		hint += 10
-		strs = make([]string, hint)
+		strs = make([]string, hint) // 有长度的
 	}
 
 	m := make(MIMEHeader, hint)
 	mkeys := make(MIMEKeys, 0, hint)
 	for {
+		// 读取原始head报文
 		kv, err := r.readContinuedLineSlice()
 		if len(kv) == 0 {
 			return m, mkeys, err
 		}
 
-		// Key ends at first colon.
+		// Key ends at first colon.键以第一个冒号结束。
 		i := bytes.IndexByte(kv, ':')
 		if i < 0 {
 			return m, mkeys, ProtocolError("malformed MIME header line: " + string(kv))
 		}
+		// 校验并转换为规范化的headKey
 		key := canonicalMIMEHeaderKey(kv[:i])
 
 		// As per RFC 7230 field-name is a token, tokens consist of one or more chars.
 		// We could return a ProtocolError here, but better to be liberal in what we
 		// accept, so if we get an empty key, skip it.
+		// 根据RFC 7230字段名是一个令牌，令牌由一个或多个字符组成。
+		// 我们可以在这里返回一个ProtocolError，但最好是在我们接受的范围内自由，所以如果我们得到一个空键，跳过它。
 		if key == "" {
 			continue
 		}
 
 		// Skip initial spaces in value.
+		// 跳过值中的初始空格。
 		i++ // skip colon
 		for i < len(kv) && (kv[i] == ' ' || kv[i] == '\t') {
 			i++
@@ -523,19 +555,22 @@ func (r *Reader) ReadMIMEHeaderAndKeys() (MIMEHeader, MIMEKeys, error) {
 		value := string(kv[i:])
 
 		vv := m[key]
-		if vv == nil && len(strs) > 0 {
+		if vv == nil && len(strs) > 0 { // 如果strs已经分配内存了，就直接用strs的内存，否则就直接append进行分配
 			// More than likely this will be a single-element key.
 			// Most headers aren't multi-valued.
 			// Set the capacity on strs[0] to 1, so any future append
 			// won't extend the slice into the other strings.
+			// 这很可能是一个单元素键。大多数头文件不是多值的。
+			// 设置strs[0]的容量为1，这样以后的任何追加都不会将slice扩展到其他字符串。
 			vv, strs = strs[:1:1], strs[1:]
 			vv[0] = value
 			m[key] = vv
 		} else {
-			m[key] = append(vv, value)
+			m[key] = append(vv, value) // 新建
 		}
 
 		// append key in original order
+		// 按原顺序追加键
 		mkeys = append(mkeys, key)
 
 		if err != nil {
@@ -546,22 +581,24 @@ func (r *Reader) ReadMIMEHeaderAndKeys() (MIMEHeader, MIMEKeys, error) {
 
 // upcomingHeaderNewlines returns an approximation of the number of newlines
 // that will be in this header. If it gets confused, it returns 0.
+// 返回该头文件中换行数的近似值。如果搞混了，返回0。
 func (r *Reader) upcomingHeaderNewlines() (n int) {
-	// Try to determine the 'hint' size.
-	r.R.Peek(1) // force a buffer load if empty
-	s := r.R.Buffered()
+	// Try to determine the 'hint' size. //尝试确定“提示”的大小。
+	r.R.Peek(1)         // force a buffer load if empty 如果缓冲区为空，则强制加载缓冲区
+	s := r.R.Buffered() // 缓冲区数据长度
 	if s == 0 {
 		return
 	}
-	peek, _ := r.R.Peek(s)
+	peek, _ := r.R.Peek(s) // 读取缓冲区所有数据
 	for len(peek) > 0 {
 		i := bytes.IndexByte(peek, '\n')
 		if i < 3 {
 			// Not present (-1) or found within the next few bytes,
 			// implying we're at the end ("\r\n\r\n" or "\n\n")
+			// 不存在(-1)或在后面几个字节中找到，意味着我们在末尾("\r\n\r\n"或"\n\n")
 			return
 		}
-		n++
+		n++ // 累计"\n"数量
 		peek = peek[i+1:]
 	}
 	return
@@ -580,7 +617,7 @@ func CanonicalMIMEHeaderKey(s string) string {
 	upper := true
 	for i := 0; i < len(s); i++ {
 		c := s[i]
-		if !validHeaderFieldByte(c) {
+		if !validHeaderFieldByte(c) { // 非标准规范字符
 			return s
 		}
 		if upper && 'a' <= c && c <= 'z' {
@@ -607,6 +644,7 @@ const toLower = 'a' - 'A'
 //   tchar = "!" / "#" / "$" / "%" / "&" / "'" / "*" / "+" / "-" / "." /
 //           "^" / "_" / "`" / "|" / "~" / DIGIT / ALPHA
 //   token = 1*tchar
+// 报告b在报头字段名中是否为有效字节
 func validHeaderFieldByte(b byte) bool {
 	return int(b) < len(isTokenTable) && isTokenTable[b]
 }
@@ -614,20 +652,24 @@ func validHeaderFieldByte(b byte) bool {
 // canonicalMIMEHeaderKey is like CanonicalMIMEHeaderKey but is
 // allowed to mutate the provided byte slice before returning the
 // string.
+// 类似于CanonicalMIMEHeaderKey，但是允许在返回字符串之前改变所提供的字节片。
 func canonicalMIMEHeaderKeyOriginal(a []byte) string {
 	// Look for it in commonHeaders , so that we can avoid an
 	// allocation by sharing the strings among all users
 	// of textproto. If we don't find it, a has been canonicalized
 	// so just return string(a).
 	// See if a looks like a header key. If not, return it unchanged.
+	// 在commonHeaders中查找它，这样我们就可以通过在textproto的所有用户中共享字符串来避免分配。如果我们没有找到它，a已经被规范化了，所以只需返回string(a)。看a是否像header键。如果不是，则不变地返回。
 	for _, c := range a {
 		if validHeaderFieldByte(c) {
 			continue
 		}
 		// Don't canonicalize.
+		// 不规范直接返回
 		return string(a)
 	}
 
+	// 规范key转换大小写
 	upper := true
 	for i, c := range a {
 		// Canonicalize: first letter upper case
@@ -650,8 +692,10 @@ func canonicalMIMEHeaderKeyOriginal(a []byte) string {
 }
 
 // commonHeader interns common header strings.
+// http请求头
 var commonHeader map[string]string
 
+// 初始化请求头
 var commonHeaderOnce sync.Once
 
 func initCommonHeader() {

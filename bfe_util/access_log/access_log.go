@@ -28,15 +28,22 @@ import (
 
 type LogConfig struct {
 	// Log directly to a single file (eg. /dev/stdout)
-	LogFile     string // log file path
-	
+	// 日志文件路径，用来将日志输出到单个文件中（不进行日志切割）
+	LogFile string // log file path
+
 	// Log with rotation under specified directory
-	LogPrefix   string // log file prefix
-	LogDir      string // log file dir
-	RotateWhen  string // rotate time
-	BackupCount int    // log file backup number
+	// 日志文件前缀名称
+	LogPrefix string // log file prefix
+	// access日志文件目录
+	LogDir string // log file dir
+	// 日志切割时间，支持 M/H/D/MIDNIGHT/NEXTHOUR
+	RotateWhen string // rotate time
+	// 最大的日志文件存储数量
+	BackupCount int // log file backup number
 }
 
+// Check 校验配置
+// confRoot配置项根目录
 func (cfg *LogConfig) Check(confRoot string) error {
 	if cfg.LogFile != "" {
 		if cfg.LogPrefix != "" || cfg.LogDir != "" || cfg.RotateWhen != "" || cfg.BackupCount > 0 {
@@ -82,6 +89,7 @@ func prefix2Name(prefix string) string {
 }
 
 // LoggerInit initialize logger. Log file name is prefix.log
+// 初始化log组件
 func LoggerInit(c LogConfig) (log4go.Logger, error) {
 	if c.LogFile != "" {
 		accessDefaultFormat := "%M"

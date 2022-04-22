@@ -81,6 +81,7 @@ func CreateInternalResp(request *Request, code int) *bfe_http.Response {
 }
 
 // ServerDataConfInterface is an interface used for lookup config for each request
+// ServerDataConfInterface是用于每个请求的查找配置的接口
 type ServerDataConfInterface interface {
 	ClusterTableLookup(clusterName string) (*bfe_cluster.BfeCluster, error)
 	HostTableLookup(hostname string) (string, error)

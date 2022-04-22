@@ -130,6 +130,7 @@ func newTransferWriter(r interface{}) (t *transferWriter, err error) {
 	return t, nil
 }
 
+// 没有body的method
 func noBodyExpected(requestMethod string) bool {
 	return requestMethod == MethodHead
 }
@@ -246,19 +247,20 @@ func (t *transferWriter) WriteBody(w io.Writer) (ncopy int64, err error) {
 	return
 }
 
+// 可以把它理解为http的内部处理或者转换操作
 type transferReader struct {
 	// Input
-	Header        Header
-	StatusCode    int
-	RequestMethod string
-	ProtoMajor    int
-	ProtoMinor    int
+	Header        Header // header头
+	StatusCode    int    // 状态码
+	RequestMethod string // http method
+	ProtoMajor    int    // 大版本号
+	ProtoMinor    int    // 小版本号
 	// Output
 	Body             io.ReadCloser
-	ContentLength    int64
-	TransferEncoding []string
+	ContentLength    int64    // body长度
+	TransferEncoding []string // 传输编码 chunked
 	Close            bool
-	Trailer          Header
+	Trailer          Header //会实现说明在报文主体后记录哪些首部字段,该首部字段可以使用在 HTTP/1.1 版本分块传输编码时
 }
 
 // bodyAllowedForStatus reports whether a given response status code
@@ -299,6 +301,7 @@ func readTransfer(msg interface{}, r *bfe_bufio.Reader) (err error) {
 		t.ProtoMinor = rr.ProtoMinor
 		// Transfer semantics for Requests are exactly like those for
 		// Responses with status code 200, responding to a GET method
+		// 请求的传输语义与状态码为200的响应完全相同，响应一个GET方法
 		t.StatusCode = StatusOK
 	default:
 		panic("unexpected type")
@@ -310,16 +313,21 @@ func readTransfer(msg interface{}, r *bfe_bufio.Reader) (err error) {
 	}
 
 	// Transfer encoding, content length
+	// 传输编码chunked，内容长度
 	t.TransferEncoding, err = fixTransferEncoding(isResponse, t.RequestMethod, t.Header)
 	if err != nil {
 		return err
 	}
 
+	// context-length头
 	realLength, err := fixLength(isResponse, t.StatusCode, t.RequestMethod, t.Header, t.TransferEncoding)
 	if err != nil {
 		return err
 	}
+
+	// 如果是repose && method == head
 	if isResponse && t.RequestMethod == MethodHead {
+		// HEAD方法与GET方法相同，只是服务器不能在响应中返回消息体。
 		if n, err := parseContentLength(t.Header.GetDirect("Content-Length")); err != nil {
 			return err
 		} else {
@@ -338,6 +346,9 @@ func readTransfer(msg interface{}, r *bfe_bufio.Reader) (err error) {
 	// If there is no Content-Length or chunked Transfer-Encoding on a *Response
 	// and the status is not 1xx, 204 or 304, then the body is unbounded.
 	// See RFC2616, section 4.4.
+	//如果在*Response上没有Content-Length或chunked Transfer-Encoding
+	//如果状态不是1xx, 204或304，那么body就是未绑定的。
+	//参见RFC2616，章节4.4。
 	switch msg.(type) {
 	case *Response:
 		if realLength == -1 &&
@@ -350,14 +361,15 @@ func readTransfer(msg interface{}, r *bfe_bufio.Reader) (err error) {
 
 	// Prepare body reader.  ContentLength < 0 means chunked encoding
 	// or close connection when finished, since multipart is not supported yet
+	// 注意这里ContentLength < 0 表示 chunked encoding 或者已经接受完数据，关闭连接
 	switch {
-	case chunked(t.TransferEncoding):
-		if noBodyExpected(t.RequestMethod) {
+	case chunked(t.TransferEncoding): // chunked读取
+		if noBodyExpected(t.RequestMethod) { // 没有body的method
 			t.Body = EofReader
 		} else {
 			t.Body = &body{src: newChunkedReader(r), hdr: msg, r: r, closing: t.Close}
 		}
-	case realLength == 0:
+	case realLength == 0: // 没有长度需要读取
 		t.Body = EofReader
 	case realLength > 0:
 		// weiwei02: set r for peek data from body
@@ -368,12 +380,12 @@ func readTransfer(msg interface{}, r *bfe_bufio.Reader) (err error) {
 			// Close semantics (i.e. HTTP/1.0)
 			t.Body = &body{src: r, closing: t.Close}
 		} else {
-			// Persistent connection (i.e. HTTP/1.1)
+			// Persistent connection (i.e. HTTP/1.1) 持久连接
 			t.Body = EofReader
 		}
 	}
 
-	// Unify output
+	// Unify output 统一的输出
 	switch rr := msg.(type) {
 	case *Request:
 		rr.Body = t.Body
@@ -393,13 +405,17 @@ func readTransfer(msg interface{}, r *bfe_bufio.Reader) (err error) {
 }
 
 // Checks whether chunked is part of the encodings stack
+// 检查chunked是否属于编码堆栈的一部分
 func chunked(te []string) bool { return len(te) > 0 && te[0] == "chunked" }
 
 // Checks whether the encoding is explicitly "identity".
 func isIdentity(te []string) bool { return len(te) == 1 && te[0] == "identity" }
 
 // Sanitize transfer encoding
+// https://cloud.tencent.com/developer/article/1906632
+// 返回传输编码 只支持chunked
 func fixTransferEncoding(isResponse bool, requestMethod string, header Header) ([]string, error) {
+	// 没设置传输编码就直接退出
 	raw, present := header["Transfer-Encoding"]
 	if !present {
 		return nil, nil
@@ -413,9 +429,11 @@ func fixTransferEncoding(isResponse bool, requestMethod string, header Header) (
 	// encodings, the loop below is designed with foresight. One
 	// invariant that must be maintained is that, if present,
 	// chunked encoding must always come first.
+	// TODO:尽管我们只支持“identity”和“chunked”编码，但下面的循环设计是有远见的。必须维护的一个不变量是，如果存在，分块编码必须总是先出现。
 	for _, encoding := range encodings {
 		encoding = strings.ToLower(strings.TrimSpace(encoding))
 		// "identity" encoding is not recorded
+		// "identity"的不记录
 		if encoding == "identity" {
 			break
 		}
@@ -425,6 +443,8 @@ func fixTransferEncoding(isResponse bool, requestMethod string, header Header) (
 		te = te[0 : len(te)+1]
 		te[len(te)-1] = encoding
 	}
+
+	// 只能设置一个
 	if len(te) > 1 {
 		return nil, &badStringError{"too many transfer encodings", strings.Join(te, ",")}
 	}
@@ -445,6 +465,7 @@ func fixTransferEncoding(isResponse bool, requestMethod string, header Header) (
 		// such a message downstream."
 		//
 		// Reportedly, these appear in the wild.
+		// RFC 7230 3.3.2说:“发送方绝对不能在任何包含Transfer-Encoding报头字段的消息中发送Content-Length报头字段。”
 		delete(header, "Content-Length")
 		return te, nil
 	}
@@ -455,16 +476,20 @@ func fixTransferEncoding(isResponse bool, requestMethod string, header Header) (
 // Determine the expected body length, using RFC 2616 Section 4.4. This
 // function is not a method, because ultimately it should be shared by
 // ReadResponse and ReadRequest.
+// 使用RFC 2616 Section 4.4确定预期的体长。这个函数不是一个方法，因为最终它应该被ReadResponse和ReadRequest共享。
+// https://blog.csdn.net/Auuuuuuuu/article/details/108112724 请求走私
 func fixLength(isResponse bool, status int, requestMethod string, header Header, te []string) (int64, error) {
 	isRequest := !isResponse
 	contentLens := header["Content-Length"]
 
 	// Hardening against HTTP request smuggling
+	// 防止请走走私
 	if len(contentLens) > 1 {
 		// Per RFC 7230 Section 3.3.2, prevent multiple
 		// Content-Length headers if they differ in value.
 		// If there are dups of the value, remove the dups.
 		// See Issue 16490.
+		// Content-Length 有多个值并且都不相等就报错
 		first := textproto.TrimString(contentLens[0])
 		for _, ct := range contentLens[1:] {
 			if first != textproto.TrimString(ct) {
@@ -473,6 +498,7 @@ func fixLength(isResponse bool, status int, requestMethod string, header Header,
 		}
 
 		// deduplicate Content-Length
+		// 删除现有的Content-Length，重新设置
 		header.Del("Content-Length")
 		header.Add("Content-Length", first)
 
@@ -480,30 +506,40 @@ func fixLength(isResponse bool, status int, requestMethod string, header Header,
 	}
 
 	// Logic based on response type or status
+	// 基于响应类型或状态的逻辑
 	if noBodyExpected(requestMethod) {
 		// For HTTP requests, as part of hardening against request
 		// smuggling (RFC 7230), don't allow a Content-Length header for
 		// methods which don't permit bodies. As an exception, allow
 		// exactly one Content-Length header if its value is "0".
+		// 对于HTTP请求，作为加固请求走私(RFC 7230)的一部分，不允许对不允许body的方法使用Content-Length头。
+		// 作为例外，如果其值为“0”，则只允许一个Content-Length头。
 		if isRequest && len(contentLens) > 0 && !(len(contentLens) == 1 && contentLens[0] == "0") {
 			return 0, fmt.Errorf("http: method cannot contain a Content-Length; got %q", contentLens)
 		}
 		return 0, nil
 	}
+
+	// 1XX 表示临时响应并需要请求者继续执行操作的状态代码。
 	if status/100 == 1 {
 		return 0, nil
 	}
+
+	// StatusNoContent 服务器成功处理了请求，但没有返回任何内容。
+	// StatusNotModified 自从上次请求后，请求的网页未修改过。 服务器返回此响应时，不会返回网页内容。
 	switch status {
 	case StatusNoContent, StatusNotModified:
 		return 0, nil
 	}
 
 	// Logic based on Transfer-Encoding
+	// 基于传输编码的逻辑，length返回-1
 	if chunked(te) {
 		return -1, nil
 	}
 
 	// Logic based on Content-Length
+	// 基于内容长度的逻辑
 	var cl string
 	if len(contentLens) == 1 {
 		cl = textproto.TrimString(contentLens[0])
@@ -515,9 +551,10 @@ func fixLength(isResponse bool, status int, requestMethod string, header Header,
 		}
 		return n, nil
 	} else {
-		header.Del("Content-Length")
+		header.Del("Content-Length") // 没设置Content-Length值
 	}
 
+	// 未设置Content-Length
 	if !isResponse {
 		// RFC 2616 neither explicitly permits nor forbids an
 		// entity-body on a GET request so we permit one if
@@ -526,10 +563,13 @@ func fixLength(isResponse bool, status int, requestMethod string, header Header,
 		// Likewise, all other request methods are assumed to have
 		// no body if neither Transfer-Encoding chunked nor a
 		// Content-Length are set.
+		// RFC 2616既不显式允许也不禁止在GET请求中使用body，所以如果声明了，我们允许使用，但是如果没有提到body，我们默认为0(而不是-1)。
+		// 同样地，如果没有设置Transfer-Encoding chunked或Content-Length，则假定所有其他请求方法都没有body。
 		return 0, nil
 	}
 
 	// Body-EOF logic based on other methods (like closing, or chunked coding)
+	// 基于其他方法(如关闭，或分块编码)的Body-EOF逻辑
 	return -1, nil
 }
 
@@ -553,13 +593,14 @@ func shouldClose(major, minor int, header Header) bool {
 }
 
 // Parse the trailer header
+// 解析并校验trailer
 func fixTrailer(header Header, te []string) (Header, error) {
 	raw := header.GetDirect("Trailer")
 	if raw == "" {
 		return nil, nil
 	}
 
-	header.Del("Trailer")
+	header.Del("Trailer") // 从head中删除
 	trailer := make(Header)
 	keys := strings.Split(raw, ",")
 	for _, key := range keys {
@@ -568,7 +609,7 @@ func fixTrailer(header Header, te []string) (Header, error) {
 		case "Transfer-Encoding", "Trailer", "Content-Length":
 			return nil, &badStringError{"bad trailer key", key}
 		}
-		trailer.Del(key)
+		trailer.Del(key) // todo
 	}
 	if len(trailer) == 0 {
 		return nil, nil
@@ -583,6 +624,8 @@ func fixTrailer(header Header, te []string) (Header, error) {
 // body turns a Reader into a ReadCloser.
 // Close ensures that the body has been fully read
 // and then reads the trailer if necessary.
+// body将Reader转换为ReadCloser。
+// 关闭确保主体已经被完全读取，然后在必要时读取预告片。
 type body struct {
 	src     io.Reader
 	hdr     interface{}       // non-nil (Response or Request) value means read trailer
@@ -737,6 +780,7 @@ func (bl bodyLocked) Read(p []byte) (n int, err error) {
 
 // parseContentLength trims whitespace from s and returns -1 if no value
 // is set, or the value if it's >= 0.
+// 从s中删除空格，如果没有设置值则返回-1，如果是>= 0则返回值。
 func parseContentLength(cl string) (int64, error) {
 	cl = strings.TrimSpace(cl)
 	if cl == "" {

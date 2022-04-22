@@ -20,9 +20,11 @@ package textproto
 
 // MIMEHeader represents a MIME-style header mapping
 // keys to sets of values.
+// 表示mime样式的头文件，将键映射到值集。
 type MIMEHeader map[string][]string
 
 // MIMEKeys represents keys of header in original order
+// 表示标题的键按原始顺序排列
 type MIMEKeys []string
 
 // Add adds the key, value pair to the header.

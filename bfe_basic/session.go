@@ -48,6 +48,7 @@ type Session struct {
 	// 客户端地址
 	RemoteAddr *net.TCPAddr // client address
 
+	// 开启100-continue协议
 	Use100Continue bool // "expect 100-continue" is used?
 
 	Proto    string                   // protocol for the connection
@@ -96,6 +97,7 @@ func (s *Session) GetVip() net.IP {
 }
 
 // Finish session完成
+// 记录会话会话时间
 func (s *Session) Finish() {
 	s.EndTime = time.Now()
 	s.Overhead = s.EndTime.Sub(s.StartTime)

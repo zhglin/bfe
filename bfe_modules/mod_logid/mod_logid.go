@@ -38,6 +38,7 @@ const (
 )
 
 type ModuleLogIdState struct {
+	// 当请求来自可信IP时，没有逻辑的情况的计数器
 	NoLogidFromUpperBfe *metrics.Counter // counter for no logid cases when requests come from trusted ip
 }
 
@@ -47,6 +48,7 @@ type ModuleLogId struct {
 	metrics metrics.Metrics
 }
 
+// NewModuleLogId 创建并初始化模块
 func NewModuleLogId() *ModuleLogId {
 	m := new(ModuleLogId)
 	m.name = ModLogId

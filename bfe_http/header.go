@@ -36,6 +36,7 @@ import (
 const TimeFormat = "Mon, 02 Jan 2006 15:04:05 GMT"
 
 // A Header represents the key-value pairs in an HTTP header.
+// 表示HTTP报头中的键值对。
 type Header map[string][]string
 
 // Add adds the key, value pair to the header.

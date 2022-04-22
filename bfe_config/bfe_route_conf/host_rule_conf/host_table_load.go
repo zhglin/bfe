@@ -35,13 +35,15 @@ type ProductToHostTag map[string]*HostTagList // product => host-tags
 type Host2HostTag map[string]string    // hostname => host-tag
 type HostTag2Product map[string]string // host-tag => product
 
+// HostTableConf 配置文件映射
 type HostTableConf struct {
 	Version        *string           // version of the config
-	DefaultProduct *string           // default product
-	Hosts          *HostTagToHost    // host-tag => hosts
-	HostTags       *ProductToHostTag // product => host-tags
+	DefaultProduct *string           // default product  默认产品线
+	Hosts          *HostTagToHost    // host-tag => hosts host配置  hostTag=>hosts
+	HostTags       *ProductToHostTag // product => host-tags   hostTag到产品线的映射
 }
 
+// HostConf 内部用配置
 type HostConf struct {
 	Version        string          // version of the config
 	DefaultProduct string          // default product
@@ -49,6 +51,7 @@ type HostConf struct {
 	HostTagMap     HostTag2Product // host-tag => product
 }
 
+// LoadAndCheck 读取并校验host配置
 func (conf *HostTableConf) LoadAndCheck(filename string) (string, error) {
 	// open the file
 	file, err := os.Open(filename)
@@ -63,7 +66,7 @@ func (conf *HostTableConf) LoadAndCheck(filename string) (string, error) {
 		return "", err
 	}
 
-	// check config
+	// check config 校验
 	if err := HostTableConfCheck(*conf); err != nil {
 		return "", err
 	}
@@ -116,6 +119,7 @@ func HostTableConfCheck(conf HostTableConf) error {
 	}
 
 	// if default product is set, defaultProduct must exist in HostTags
+	// 如果设置了default product，则HostTags中必须存在defaultProduct
 	if conf.DefaultProduct != nil {
 		hostTags := *conf.HostTags
 		_, ok := hostTags[*conf.DefaultProduct]
@@ -128,10 +132,12 @@ func HostTableConfCheck(conf HostTableConf) error {
 }
 
 // HostRuleConfLoad loads config of host table from file.
+// 从文件中加载主机表的配置。
 func HostRuleConfLoad(filename string) (HostConf, error) {
 	var conf HostConf
 	var config HostTableConf
 
+	// host配置
 	if _, err := config.LoadAndCheck(filename); err != nil {
 		return conf, err
 	}

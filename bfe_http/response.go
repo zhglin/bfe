@@ -194,6 +194,7 @@ func ReadResponse(r *bfe_bufio.Reader, req *Request) (*Response, error) {
 //	Pragma: no-cache
 // like
 //	Cache-Control: no-cache
+// Pragme:no-cache转成Cache-Control:no-cache
 func fixPragmaCacheControl(header Header) {
 	if hp, ok := header["Pragma"]; ok && len(hp) > 0 && hp[0] == "no-cache" {
 		if _, presentcc := header["Cache-Control"]; !presentcc {

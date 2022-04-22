@@ -14,6 +14,7 @@
 
 package mod_access
 
+// 日志能记录的变量
 const (
 	FormatAllServeTime = iota
 	FormatRequestTime
@@ -72,18 +73,21 @@ const (
 	FormatSesStartTime
 )
 
+// 日志变量的作用域
 const (
 	Request   = "Request"
 	Session   = "Session"
-	DomainAll = "DomainAll"
+	DomainAll = "DomainAll" // request,session都支持
 )
 
+// LogFmtItem 日志变量
 type LogFmtItem struct {
 	Key  string
 	Type int
 }
 
 var (
+	// 配置文件中支持的配置名
 	fmtTable = map[string]int{
 		"time": FormatTime,
 
@@ -139,6 +143,7 @@ var (
 		"ses_keepalive_num":     FormatSesKeepaliveNum,
 	}
 
+	// 变量的作用域
 	fmtItemDomainTable = map[int]string{
 		FormatString: DomainAll,
 		FormatTime:   DomainAll,
@@ -198,6 +203,7 @@ var (
 		FormatSesKeepaliveNum:    Session,
 	}
 
+	// 变量类型生效的函数
 	fmtHandlerTable = map[int]interface{}{
 		FormatAllServeTime:        onLogFmtAllServeTime,
 		FormatRequestTime:         onLogFmtRequestTime,

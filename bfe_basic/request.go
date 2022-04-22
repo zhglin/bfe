@@ -58,14 +58,18 @@ type RequestTransport struct {
 }
 
 // Request is a wrapper of HTTP request
+// 是HTTP请求的包装器
 type Request struct {
+	// 链接
 	Connection net.Conn
-	Session    *Session
-
+	// 会话
+	Session *Session
+	// 客户端地址
 	RemoteAddr *net.TCPAddr // address of remote peer
 	ClientAddr *net.TCPAddr // address of real client. Maybe nil if request is from
 	// upstream proxy but without a valid Clientip header
 
+	// request
 	HttpRequest  *bfe_http.Request  // incoming request
 	OutRequest   *bfe_http.Request  // forwarded request
 	HttpResponse *bfe_http.Response // corresponding response
@@ -88,6 +92,7 @@ type Request struct {
 	ErrCode error  // error code for handling request
 	ErrMsg  string // additional error msg
 
+	// 状态
 	Stat *RequestStat // time, data length, etc.
 
 	RetryTime int         // times of retry
@@ -95,6 +100,7 @@ type Request struct {
 
 	Redirect RedirectInfo // redirect info
 
+	// 获取配置接口
 	SvrDataConf ServerDataConfInterface // interface for ServerDataConf
 
 	// User context associated with this request
@@ -102,6 +108,7 @@ type Request struct {
 }
 
 // NewRequest creates and initializes a new request.
+// 创建并初始化一个新请求。
 func NewRequest(request *bfe_http.Request, conn net.Conn, stat *RequestStat,
 	session *Session, svrDataConf ServerDataConfInterface) *Request {
 	fReq := new(Request)

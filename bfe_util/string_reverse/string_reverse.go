@@ -16,6 +16,8 @@ package string_reverse
 
 // ReverseFqdnHost reverse host.
 // i.e.: www.baidu.com news.baidu.com -> moc.udiab.swen moc.udiab.www will have same prefix
+// ReverseFqdnHost反向主机。
+// 例如:www.baidu.com news.baidu.com -> moc.udiab.swen moc.udiab.www将有相同的前缀
 func ReverseFqdnHost(host string) string {
 	r := []rune(host)
 	for i, j := 0, len(r)-1; i < j; i, j = i+1, j-1 {

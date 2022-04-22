@@ -38,6 +38,7 @@ var (
 
 // HostTable holds mappings from host to prduct and
 // mappings from product to cluster rules.
+// 路由的映射关系
 type HostTable struct {
 	versions Versions // record conf versions
 
@@ -102,6 +103,7 @@ func (t *HostTable) updateRouteTable(conf *route_rule_conf.RouteTableConf) {
 }
 
 // Update updates host table
+// 更新路由信息
 func (t *HostTable) Update(hostConf host_rule_conf.HostConf,
 	vipConf vip_rule_conf.VipConf, routeConf *route_rule_conf.RouteTableConf) {
 

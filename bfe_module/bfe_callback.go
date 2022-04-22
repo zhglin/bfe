@@ -39,7 +39,7 @@ const (
 	HandleForward
 	HandleReadResponse
 	HandleRequestFinish
-	HandleFinish
+	HandleFinish // 会话完成
 )
 
 // CallbackPointName 对应的名称

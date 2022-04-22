@@ -102,8 +102,9 @@ type ProxyState struct {
 	SpdyClientReqActive  *metrics.Gauge
 
 	// connection successful accepted
+	// 连接成功的接受了 Counter是一个累积指标，表示一个单一的单调递增计数器，其值只能在重启时增加或重置为零
 	ClientConnServed       *metrics.Counter
-	HttpClientConnServed   *metrics.Counter
+	HttpClientConnServed   *metrics.Counter // http链接
 	HttpsClientConnServed  *metrics.Counter
 	Http2ClientConnServed  *metrics.Counter
 	SpdyClientConnServed   *metrics.Counter
@@ -112,8 +113,9 @@ type ProxyState struct {
 	WssClientConnServed    *metrics.Counter
 
 	// active connection
+	// 活动连接 Gauge是一个度量值，表示可以任意上下的单个数值。
 	ClientConnActive       *metrics.Gauge
-	HttpClientConnActive   *metrics.Gauge
+	HttpClientConnActive   *metrics.Gauge // http链接
 	HttpsClientConnActive  *metrics.Gauge
 	Http2ClientConnActive  *metrics.Gauge
 	SpdyClientConnActive   *metrics.Gauge
@@ -122,6 +124,7 @@ type ProxyState struct {
 	WssClientConnActive    *metrics.Gauge
 }
 
+// ClientConnServedInc 会话建立成功的统计计数
 func (s *ProxyState) ClientConnServedInc(proto string, value uint) {
 	switch proto {
 	case "http":
@@ -142,6 +145,7 @@ func (s *ProxyState) ClientConnServedInc(proto string, value uint) {
 	s.ClientConnServed.Inc(value)
 }
 
+// ClientConnActiveInc 统计计数
 func (s *ProxyState) ClientConnActiveInc(proto string, value uint) {
 	switch proto {
 	case "http":

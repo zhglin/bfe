@@ -20,10 +20,13 @@ import (
 	"time"
 )
 
+// RequestStat request的状态信息
 type RequestStat struct {
 	// time stat
+	// 读取第一行HTTP请求的时间
 	ReadReqStart time.Time // after read first line of http request
-	ReadReqEnd   time.Time // after read http request
+	// Http读取完成的时间
+	ReadReqEnd time.Time // after read http request
 
 	FindProStart time.Time // just before find product
 	FindProEnd   time.Time // after find product
@@ -44,6 +47,7 @@ type RequestStat struct {
 	BackendFirst time.Time // just before connect backend, for first invoke (retry may exist)
 
 	// data length
+	// http header长度
 	HeaderLenIn  int // length of request header
 	BodyLenIn    int // length of request body
 	HeaderLenOut int // length of response header
@@ -53,6 +57,7 @@ type RequestStat struct {
 	IsCrossCluster bool // with cross-cluster retry?
 }
 
+// NewRequestStat 创建并返回requestStat
 func NewRequestStat(start time.Time) *RequestStat {
 	rs := new(RequestStat)
 	rs.ReadReqStart = start

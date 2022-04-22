@@ -33,6 +33,7 @@ type Product2Vip map[string]VipList // product => vip list
 
 type Vip2Product map[string]string // vip => product
 
+// VipTableConf 配置文件映射
 type VipTableConf struct {
 	Version string      // version of the config
 	Vips    Product2Vip // product => vip list
@@ -43,6 +44,7 @@ type VipConf struct {
 	VipMap  Vip2Product // vip => product
 }
 
+// LoadAndCheck 加载并校验
 func (conf *VipTableConf) LoadAndCheck(filename string) (string, error) {
 	// open the file
 	file, err := os.Open(filename)
@@ -74,7 +76,7 @@ func VipTableConfCheck(conf *VipTableConf) error {
 	for product, vipList := range conf.Vips {
 		var formattedVipList VipList
 		for _, vip := range vipList {
-			ip := net.ParseIP(vip)
+			ip := net.ParseIP(vip) // 校验ip合法
 			if ip == nil {
 				return fmt.Errorf("invalid vip %s for %s", vip, product)
 			}
@@ -87,6 +89,7 @@ func VipTableConfCheck(conf *VipTableConf) error {
 }
 
 // VipRuleConfLoad loads config of vip table from file.
+// 从文件加载VIP表的配置。
 func VipRuleConfLoad(filename string) (VipConf, error) {
 	var vipConf VipConf
 
@@ -97,6 +100,7 @@ func VipRuleConfLoad(filename string) (VipConf, error) {
 	}
 
 	// convert from VipTableConf
+	// 从VipTableConf转换
 	vipConf.Version = config.Version
 	vipConf.VipMap = make(Vip2Product)
 	for product, viplist := range config.Vips {

@@ -170,6 +170,7 @@ func newConn(rwc net.Conn, srv *BfeServer) (c *conn, err error) {
 	c.buf = bfe_bufio.NewReadWriter(br, bw)
 	c.reqSN = 0
 
+	// 创建会话
 	c.session = bfe_basic.NewSession(rwc)
 	vip, vport, err := bfe_util.GetVipPort(rwc)
 	if err == nil {
@@ -197,12 +198,14 @@ func newConn(rwc net.Conn, srv *BfeServer) (c *conn, err error) {
 }
 
 // Read next request from connection.
+// 读取连接的下一个请求。
 func (c *conn) readRequest() (request *bfe_basic.Request, err error) {
 	c.lr.N = int64(c.server.MaxHeaderBytes) + 4096 /* bufio slop */
 
 	var req *bfe_http.Request
 
 	// another request arrives
+	// 另一个请求到达
 	c.reqSN += 1
 	if req, err = bfe_http.ReadRequest(c.buf.Reader, c.server.MaxHeaderUriBytes); err != nil {
 		if c.lr.N == 0 {
@@ -265,6 +268,7 @@ const rstAvoidanceDelay = 500 * time.Millisecond
 // subsequent RST.
 //
 // See http://golang.org/issue/3595
+// // closeWrite会刷新所有未完成的数据，并发送一个FIN包(如果客户端是通过TCP连接的)，表示我们完成了。然后我们暂停一会儿，希望客户端在任何后续的RST之前处理它。
 func (c *conn) closeWriteAndWait() {
 	c.finalFlush()
 	if cw, ok := c.rwc.(bfe_util.CloseWriter); ok {
@@ -279,6 +283,7 @@ func (c *conn) finish() {
 	srv := c.server
 
 	// finish session
+	// 会话结束
 	c.session.Finish()
 
 	// Callback for HandleFinish
@@ -337,11 +342,11 @@ func (c *conn) serve() {
 	}()
 
 	// Callback for HANDLE_ACCEPT
-	// accept的回调
+	// 查找并执行accept的回调
 	hl = c.server.CallBacks.GetHandlerList(bfe_module.HandleAccept)
 	if hl != nil {
 		retVal = hl.FilterAccept(c.session)
-		if retVal == bfe_module.BfeHandlerClose {
+		if retVal == bfe_module.BfeHandlerClose { // 被模块拒绝链接
 			// close the connection
 			return
 		}
@@ -412,14 +417,18 @@ func (c *conn) serve() {
 	}
 
 	// process requests from http/https protocol
+	// 处理http/https协议的请求
 	if _, ok := c.rwc.(*bfe_tls.Conn); ok {
 		c.session.Proto = "https"
 	} else {
 		c.session.Proto = "http"
 	}
+
+	// 统计计数
 	proxyState.ClientConnServedInc(c.session.Proto, 1) // Note: counter for http/https protocol
 	proxyState.ClientConnActiveInc(c.session.Proto, 1)
 
+	// 循环一直读取请求
 	firstRequest := true
 	for {
 		if firstRequest {
@@ -427,11 +436,13 @@ func (c *conn) serve() {
 			// following request's timeout is controlled by TimeoutReadClientAgain
 			// the read again timeout is different for each cluster
 			// so it's not set here, see reverseproxy.go
+			// 设置第一个请求的超时是由timeoutreadclient控制的，再次读取超时对于每个集群是不同的，所以它不在这里设置，参见reverseproxy.go
 			if d := c.server.ReadTimeout; d != 0 {
 				c.rwc.SetReadDeadline(time.Now().Add(d))
 			}
 		}
 
+		// 读取http报文
 		request, err := c.readRequest()
 		if err != nil {
 			if err == errTooLarge {
@@ -470,18 +481,21 @@ func (c *conn) serve() {
 			break
 		}
 
+		// 原始request
 		req := request.HttpRequest
 
 		// create context for response
 		w := newResponse(c, req)
 
-		// Expect 100 Continue support
+		// Expect 100 Continue support 支持100-continue协议
 		if req.ExpectsContinue() {
 			session.Use100Continue = true
 			proxyState.ClientConnUse100Continue.Inc(1)
 
+			// 校验协议版本是否支持
 			if req.ProtoAtLeast(1, 1) {
 				// Wrap the Body reader with one that replies on the connection
+				// 将Body阅读器包装为对连接进行回复的阅读器
 				req.Body = &expectContinueReader{readCloser: req.Body, resp: w}
 				w.canWriteContinue.setTrue()
 			}
@@ -495,7 +509,7 @@ func (c *conn) serve() {
 				break
 			}
 			req.Header.Del("Expect")
-		} else if req.Header.GetDirect("Expect") != "" {
+		} else if req.Header.GetDirect("Expect") != "" { // expect != 100-continue
 			session.SetError(bfe_basic.ErrClientExpectFail, "invalid Expect header")
 			proxyState.ErrClientExpectFail.Inc(1)
 
